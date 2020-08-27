@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (class)
+import LifePoints
 
 
 main : Program () Model Msg
@@ -14,13 +15,24 @@ main =
 -- MODEL
 
 
+type Phase
+    = PhaseGreen
+    | PhaseYellow
+    | PhaseRed
+
+
 type alias Model =
-    String
+    { lifePoints : LifePoints.Counter, phase : Phase }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( "Why hello there", Cmd.none )
+    let
+        initialModel : Model
+        initialModel =
+            { lifePoints = LifePoints.createCounter 20, phase = PhaseGreen }
+    in
+    ( initialModel, Cmd.none )
 
 
 
@@ -32,10 +44,8 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg _ =
-    case msg of
-        HandleThingInput str ->
-            ( str, Cmd.none )
+update msg model =
+    ( model, Cmd.none )
 
 
 
