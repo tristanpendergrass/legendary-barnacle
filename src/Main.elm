@@ -25,7 +25,7 @@ type Phase
     | PhaseRed
 
 
-type alias Model =
+type alias CommonGameState =
     { lifePoints : LifePoints.Counter
     , phase : Phase
     , agingCards : List FightingCard.FightingCard
@@ -36,6 +36,18 @@ type alias Model =
     , robinsonDiscard : List FightingCard.FightingCard
     , hazardDiscard : List FightingCard.FightingCard
     }
+
+
+type GameState
+    = DecidingHazard
+    | FightingHazard
+    | ResolvingFight
+    | FinalShowdown
+
+
+type Model
+    = GameInProgress GameState
+    | GameOver
 
 
 init : () -> ( Model, Cmd Msg )
@@ -58,8 +70,8 @@ init _ =
         ( ( leftPirate, rightPirate ), seedAfterPirateShuffle ) =
             Random.step PirateCard.getTwoPirates seedAfterHazardShuffle
 
-        initialModel : Model
-        initialModel =
+        initialGameState : GameState
+        initialGameState =
             { lifePoints = LifePoints.createCounter 20
             , phase = PhaseGreen
             , agingCards = agingCards
