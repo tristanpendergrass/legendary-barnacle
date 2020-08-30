@@ -2,8 +2,8 @@ module Main exposing (main)
 
 import Browser
 import FightingCard
-import Html exposing (Html, div, text)
-import Html.Attributes exposing (class)
+import Html exposing (Html, button, div, input, label, span, text)
+import Html.Attributes exposing (class, type_)
 import LifePoints
 import PirateCard
 import Random
@@ -38,11 +38,16 @@ type alias CommonGameState =
     }
 
 
+type DecidingHazardState
+    = TwoOptions FightingCard.FightingCard FightingCard.FightingCard
+    | OneOption FightingCard.FightingCard
+
+
 type GameState
-    = DecidingHazard
-    | FightingHazard
-    | ResolvingFight
-    | FinalShowdown
+    = DecidingHazard CommonGameState DecidingHazardState
+    | FightingHazard CommonGameState
+    | ResolvingFight CommonGameState
+    | FinalShowdown CommonGameState
 
 
 type Model
@@ -64,14 +69,14 @@ init _ =
         ( robinsonCards, seedAfterRobinsonShuffle ) =
             Random.step FightingCard.getInitialRobinsonCards seedAfterAgingShuffle
 
-        ( hazardCards, seedAfterHazardShuffle ) =
+        ( ( ( leftHazard, rightHazard ), hazardCards ), seedAfterHazardShuffle ) =
             Random.step FightingCard.getInitialHazardCards seedAfterRobinsonShuffle
 
         ( ( leftPirate, rightPirate ), seedAfterPirateShuffle ) =
             Random.step PirateCard.getTwoPirates seedAfterHazardShuffle
 
-        initialGameState : GameState
-        initialGameState =
+        commonGameState : CommonGameState
+        commonGameState =
             { lifePoints = LifePoints.createCounter 20
             , phase = PhaseGreen
             , agingCards = agingCards
@@ -82,8 +87,12 @@ init _ =
             , robinsonDiscard = []
             , hazardDiscard = []
             }
+
+        decidingHazardState : DecidingHazardState
+        decidingHazardState =
+            TwoOptions leftHazard rightHazard
     in
-    ( initialModel, Cmd.none )
+    ( GameInProgress (DecidingHazard commonGameState decidingHazardState), Cmd.none )
 
 
 
@@ -91,12 +100,67 @@ init _ =
 
 
 type Msg
-    = HandleThingInput String
+    = EndGame
+      -- DecidingHazard phase
+    | ChooseLeftHazard
+    | ChooseRightHazard
+    | ChooseSingleHazard
+    | ChooseSkipHazard
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case model of
+        GameInProgress gameState ->
+            updateGameInProgress msg gameState
+
+        GameOver ->
+            ( model, Cmd.none )
+
+
+updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
+updateGameInProgress msg gameState =
+    let
+        noOp : ( Model, Cmd Msg )
+        noOp =
+            ( GameInProgress gameState, Cmd.none )
+    in
+    case ( msg, gameState ) of
+        -- DecidingHazard phase
+        ( ChooseLeftHazard, DecidingHazard commonGameState decidingHazardState ) ->
+            case decidingHazardState of
+                TwoOptions _ _ ->
+                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+
+                OneOption _ ->
+                    noOp
+
+        ( ChooseRightHazard, DecidingHazard commonGameState decidingHazardState ) ->
+            case decidingHazardState of
+                TwoOptions _ _ ->
+                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+
+                OneOption _ ->
+                    noOp
+
+        ( ChooseSingleHazard, DecidingHazard commonGameState decidingHazardState ) ->
+            case decidingHazardState of
+                TwoOptions _ _ ->
+                    noOp
+
+                OneOption _ ->
+                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+
+        ( ChooseSkipHazard, DecidingHazard commonGameState decidingHazardState ) ->
+            case decidingHazardState of
+                TwoOptions _ _ ->
+                    noOp
+
+                OneOption _ ->
+                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+
+        _ ->
+            noOp
 
 
 
@@ -114,4 +178,29 @@ subscriptions _ =
 
 view : Model -> Html Msg
 view model =
-    div [ class "m-6 text-xl" ] [ text "Why hello there." ]
+    case model of
+        GameOver ->
+            div [ class "m-6 text-xl" ] [ text "Game over" ]
+
+        GameInProgress gameState ->
+            case gameState of
+                DecidingHazard _ (TwoOptions leftHazard rightHazard) ->
+                    div []
+                        [ div [ class "m-6 text-xl" ] [ text "Decide Hazard" ]
+                        , div [ class "m-6 flex" ]
+                            [ button [ class "inline-block mr-4" ] [ text "left" ]
+                            , button [ class "inline-block mr-4" ] [ text "right" ]
+                            ]
+                        ]
+
+                DecidingHazard _ (OneOption hazard) ->
+                    div []
+                        [ div [ class "m-6 text-xl" ] [ text "Decide Hazard" ]
+                        , div [ class "m-6 flex" ]
+                            [ button [ class "inline-block mr-4" ] [ text "Choose hazard" ]
+                            , button [ class "inline-block mr-4" ] [ text "Skip hazard" ]
+                            ]
+                        ]
+
+                _ ->
+                    div [ class "m-6 text-xl" ] [ text "Stage not supported" ]

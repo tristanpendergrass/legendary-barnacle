@@ -207,10 +207,15 @@ cannibals =
 -- Hazard Card data
 
 
+food : FightingCard
+food =
+    HazardCard withTheRaft { title = "food", fightingValue = 0, specialAbility = Just PlusOneLife }
+
+
 hazardCards : List FightingCard
 hazardCards =
-    [ HazardCard withTheRaft { title = "food", fightingValue = 0, specialAbility = Just PlusOneLife }
-    , HazardCard withTheRaft { title = "food", fightingValue = 0, specialAbility = Just PlusOneLife }
+    [ food
+    , food
     , HazardCard withTheRaft { title = "realization", fightingValue = 0, specialAbility = Just Destroy }
     , HazardCard withTheRaft { title = "deception", fightingValue = 0, specialAbility = Just BelowTheStack }
     , HazardCard withTheRaft { title = "mimicry", fightingValue = 0, specialAbility = Just Copy }
@@ -242,6 +247,17 @@ hazardCards =
     ]
 
 
-getInitialHazardCards : Random.Generator (List FightingCard)
+getInitialHazardCards : Random.Generator ( ( FightingCard, FightingCard ), List FightingCard )
 getInitialHazardCards =
-    Random.List.shuffle hazardCards
+    hazardCards
+        |> Random.List.shuffle
+        |> Random.map
+            (\shuffledList ->
+                case shuffledList of
+                    first :: second :: rest ->
+                        ( ( first, second ), rest )
+
+                    _ ->
+                        -- should not be reachable
+                        ( ( food, food ), shuffledList )
+            )
