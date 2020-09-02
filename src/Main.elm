@@ -45,6 +45,16 @@ type OneOrTwo a
     | One a
 
 
+discardOneOrTwo : OneOrTwo a -> List a -> List a
+discardOneOrTwo oneOrTwo list =
+    case oneOrTwo of
+        One card ->
+            card :: list
+
+        Two first second ->
+            first :: second :: list
+
+
 type GameState
     = HazardSelection CommonState (OneOrTwo Card)
     | FightingHazard CommonState
@@ -111,19 +121,6 @@ type Msg
     | ChooseSkipHazard
 
 
-discardOneOrTwoHazards : OneOrTwo Card -> CommonState -> CommonState
-discardOneOrTwoHazards oneOrTwo commonState =
-    { commonState
-        | hazardDiscard =
-            case oneOrTwo of
-                One card ->
-                    card :: commonState.hazardDiscard
-
-                Two first second ->
-                    first :: second :: commonState.hazardDiscard
-    }
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
@@ -141,7 +138,7 @@ toNextPhase leftoverCards incompleteCommonState =
     let
         commonState : CommonState
         commonState =
-            discardOneOrTwoHazards leftoverCards incompleteCommonState
+            { incompleteCommonState | hazardDiscard = discardOneOrTwo leftoverCards incompleteCommonState.hazardDiscard }
 
         toHazardSelection : Phase -> GameState
         toHazardSelection phase =
