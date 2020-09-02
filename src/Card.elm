@@ -1,10 +1,10 @@
-module FightingCard exposing (FightingCard, getInitialAgingCards, getInitialHazardCards, getInitialRobinsonCards)
+module Card exposing (Card, getInitialAgingCards, getInitialHazardCards, getInitialRobinsonCards)
 
 import Random
 import Random.List
 
 
-type FightingCard
+type Card
     = HazardCard HazardStats FightStats
     | RobinsonCard FightStats
     | AgingCard AgingType FightStats
@@ -60,52 +60,52 @@ type AgingType
 -- Aging Card Data
 
 
-veryTired : FightingCard
+veryTired : Card
 veryTired =
     AgingCard Normal { title = "very tired", fightingValue = 0, specialAbility = Just StopDrawing }
 
 
-stupid : FightingCard
+stupid : Card
 stupid =
     AgingCard Normal { title = "stupid", fightingValue = -2, specialAbility = Nothing }
 
 
-hungry : FightingCard
+hungry : Card
 hungry =
     AgingCard Normal { title = "hungry", fightingValue = 0, specialAbility = Just MinusOneLife }
 
 
-scared : FightingCard
+scared : Card
 scared =
     AgingCard Normal { title = "scared", fightingValue = 0, specialAbility = Just HighestCardNull }
 
 
-distracted : FightingCard
+distracted : Card
 distracted =
     AgingCard Normal { title = "distracted", fightingValue = -1, specialAbility = Nothing }
 
 
-veryStupid : FightingCard
+veryStupid : Card
 veryStupid =
     AgingCard Normal { title = "very stupid", fightingValue = -3, specialAbility = Nothing }
 
 
-moronic : FightingCard
+moronic : Card
 moronic =
     AgingCard Difficult { title = "moronic", fightingValue = -4, specialAbility = Nothing }
 
 
-suicidal : FightingCard
+suicidal : Card
 suicidal =
     AgingCard Difficult { title = "suicidal", fightingValue = -5, specialAbility = Nothing }
 
 
-veryHungry : FightingCard
+veryHungry : Card
 veryHungry =
     AgingCard Difficult { title = "very hungry", fightingValue = 0, specialAbility = Just MinusTwoLife }
 
 
-normalAgingCards : List FightingCard
+normalAgingCards : List Card
 normalAgingCards =
     [ veryTired
     , stupid
@@ -117,12 +117,12 @@ normalAgingCards =
     ]
 
 
-difficultAgingCards : List FightingCard
+difficultAgingCards : List Card
 difficultAgingCards =
     [ moronic, suicidal, veryHungry ]
 
 
-getInitialAgingCards : Random.Generator (List FightingCard)
+getInitialAgingCards : Random.Generator (List Card)
 getInitialAgingCards =
     Random.map2
         List.append
@@ -134,32 +134,32 @@ getInitialAgingCards =
 -- Robinson Card data
 
 
-distractedRobinson : FightingCard
+distractedRobinson : Card
 distractedRobinson =
     RobinsonCard { title = "distracted", fightingValue = -1, specialAbility = Nothing }
 
 
-focused : FightingCard
+focused : Card
 focused =
     RobinsonCard { title = "focused", fightingValue = 1, specialAbility = Nothing }
 
 
-weak : FightingCard
+weak : Card
 weak =
     RobinsonCard { title = "weak", fightingValue = 0, specialAbility = Nothing }
 
 
-genius : FightingCard
+genius : Card
 genius =
     RobinsonCard { title = "genius", fightingValue = 2, specialAbility = Nothing }
 
 
-eating : FightingCard
+eating : Card
 eating =
     RobinsonCard { title = "eating", fightingValue = 0, specialAbility = Just PlusOneLife }
 
 
-robinsonCards : List FightingCard
+robinsonCards : List Card
 robinsonCards =
     List.concat
         [ List.repeat 5 distractedRobinson
@@ -169,7 +169,7 @@ robinsonCards =
         ]
 
 
-getInitialRobinsonCards : Random.Generator (List FightingCard)
+getInitialRobinsonCards : Random.Generator (List Card)
 getInitialRobinsonCards =
     Random.List.shuffle robinsonCards
 
@@ -207,12 +207,12 @@ cannibals =
 -- Hazard Card data
 
 
-food : FightingCard
+food : Card
 food =
     HazardCard withTheRaft { title = "food", fightingValue = 0, specialAbility = Just PlusOneLife }
 
 
-hazardCards : List FightingCard
+hazardCards : List Card
 hazardCards =
     [ food
     , food
@@ -247,7 +247,7 @@ hazardCards =
     ]
 
 
-getInitialHazardCards : Random.Generator ( ( FightingCard, FightingCard ), List FightingCard )
+getInitialHazardCards : Random.Generator ( ( Card, Card ), List Card )
 getInitialHazardCards =
     hazardCards
         |> Random.List.shuffle

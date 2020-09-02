@@ -1,11 +1,12 @@
 module Main exposing (main)
 
 import Browser
-import FightingCard
-import Html exposing (Html, button, div, input, label, span, text)
-import Html.Attributes exposing (class, type_)
+import Card exposing (Card)
+import Html exposing (Html, button, div, span, text)
+import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import LifePoints
-import PirateCard
+import PirateCard exposing (PirateCard)
 import Random
 import Random.List
 
@@ -25,29 +26,30 @@ type Phase
     | PhaseRed
 
 
-type alias CommonGameState =
-    { lifePoints : LifePoints.Counter
+type alias CommonState =
+    { seed : Random.Seed
+    , lifePoints : LifePoints.Counter
     , phase : Phase
-    , agingCards : List FightingCard.FightingCard
-    , fightingCards : List FightingCard.FightingCard
-    , hazardCards : List FightingCard.FightingCard
-    , leftPirate : PirateCard.PirateCard
-    , rightPirate : PirateCard.PirateCard
-    , robinsonDiscard : List FightingCard.FightingCard
-    , hazardDiscard : List FightingCard.FightingCard
+    , agingCards : List Card
+    , fightingCards : List Card
+    , hazardCards : List Card
+    , leftPirate : PirateCard
+    , rightPirate : PirateCard
+    , robinsonDiscard : List Card
+    , hazardDiscard : List Card
     }
 
 
-type DecidingHazardState
-    = TwoOptions FightingCard.FightingCard FightingCard.FightingCard
-    | OneOption FightingCard.FightingCard
+type OneOrTwo a
+    = Two a a
+    | One a
 
 
 type GameState
-    = DecidingHazard CommonGameState DecidingHazardState
-    | FightingHazard CommonGameState
-    | ResolvingFight CommonGameState
-    | FinalShowdown CommonGameState
+    = HazardSelection CommonState (OneOrTwo Card)
+    | FightingHazard CommonState
+    | ResolvingFight CommonState
+    | FinalShowdown CommonState
 
 
 type Model
@@ -64,20 +66,21 @@ init _ =
             Random.initialSeed 0
 
         ( agingCards, seedAfterAgingShuffle ) =
-            Random.step FightingCard.getInitialAgingCards initialSeed
+            Random.step Card.getInitialAgingCards initialSeed
 
         ( robinsonCards, seedAfterRobinsonShuffle ) =
-            Random.step FightingCard.getInitialRobinsonCards seedAfterAgingShuffle
+            Random.step Card.getInitialRobinsonCards seedAfterAgingShuffle
 
         ( ( ( leftHazard, rightHazard ), hazardCards ), seedAfterHazardShuffle ) =
-            Random.step FightingCard.getInitialHazardCards seedAfterRobinsonShuffle
+            Random.step Card.getInitialHazardCards seedAfterRobinsonShuffle
 
         ( ( leftPirate, rightPirate ), seedAfterPirateShuffle ) =
             Random.step PirateCard.getTwoPirates seedAfterHazardShuffle
 
-        commonGameState : CommonGameState
-        commonGameState =
-            { lifePoints = LifePoints.createCounter 20
+        commonState : CommonState
+        commonState =
+            { seed = seedAfterPirateShuffle
+            , lifePoints = LifePoints.createCounter 20
             , phase = PhaseGreen
             , agingCards = agingCards
             , fightingCards = robinsonCards
@@ -88,11 +91,11 @@ init _ =
             , hazardDiscard = []
             }
 
-        decidingHazardState : DecidingHazardState
-        decidingHazardState =
-            TwoOptions leftHazard rightHazard
+        hazardSelectionState : OneOrTwo Card
+        hazardSelectionState =
+            Two leftHazard rightHazard
     in
-    ( GameInProgress (DecidingHazard commonGameState decidingHazardState), Cmd.none )
+    ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
 
 
 
@@ -101,11 +104,24 @@ init _ =
 
 type Msg
     = EndGame
-      -- DecidingHazard phase
+      -- Hazard selection phase
     | ChooseLeftHazard
     | ChooseRightHazard
     | ChooseSingleHazard
     | ChooseSkipHazard
+
+
+discardOneOrTwoHazards : OneOrTwo Card -> CommonState -> CommonState
+discardOneOrTwoHazards oneOrTwo commonState =
+    { commonState
+        | hazardDiscard =
+            case oneOrTwo of
+                One card ->
+                    card :: commonState.hazardDiscard
+
+                Two first second ->
+                    first :: second :: commonState.hazardDiscard
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -118,6 +134,42 @@ update msg model =
             ( model, Cmd.none )
 
 
+{-| Returns the game state to hazard selection with the phase updated, or moves to the final showdown if already in PhaseRed
+-}
+toNextPhase : OneOrTwo Card -> CommonState -> GameState
+toNextPhase leftoverCards incompleteCommonState =
+    let
+        commonState : CommonState
+        commonState =
+            discardOneOrTwoHazards leftoverCards incompleteCommonState
+
+        toHazardSelection : Phase -> GameState
+        toHazardSelection phase =
+            let
+                ( shuffledHazards, newSeed ) =
+                    Random.step (Random.List.shuffle commonState.hazardDiscard) commonState.seed
+            in
+            case shuffledHazards of
+                [] ->
+                    HazardSelection { commonState | phase = phase } leftoverCards
+
+                [ singleCard ] ->
+                    HazardSelection { commonState | phase = phase, hazardDiscard = [], seed = newSeed } (One singleCard)
+
+                first :: second :: rest ->
+                    HazardSelection { commonState | phase = phase, hazardDiscard = rest, seed = newSeed } (Two first second)
+    in
+    case commonState.phase of
+        PhaseRed ->
+            FinalShowdown commonState
+
+        PhaseYellow ->
+            toHazardSelection PhaseRed
+
+        PhaseGreen ->
+            toHazardSelection PhaseYellow
+
+
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
 updateGameInProgress msg gameState =
     let
@@ -126,38 +178,18 @@ updateGameInProgress msg gameState =
             ( GameInProgress gameState, Cmd.none )
     in
     case ( msg, gameState ) of
-        -- DecidingHazard phase
-        ( ChooseLeftHazard, DecidingHazard commonGameState decidingHazardState ) ->
-            case decidingHazardState of
-                TwoOptions _ _ ->
-                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+        -- Hazard Selection phase
+        ( ChooseLeftHazard, HazardSelection commonState (Two _ _) ) ->
+            ( GameInProgress (FightingHazard commonState), Cmd.none )
 
-                OneOption _ ->
-                    noOp
+        ( ChooseRightHazard, HazardSelection commonState (Two _ _) ) ->
+            ( GameInProgress (FightingHazard commonState), Cmd.none )
 
-        ( ChooseRightHazard, DecidingHazard commonGameState decidingHazardState ) ->
-            case decidingHazardState of
-                TwoOptions _ _ ->
-                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+        ( ChooseSingleHazard, HazardSelection commonState (One _) ) ->
+            ( GameInProgress (FightingHazard commonState), Cmd.none )
 
-                OneOption _ ->
-                    noOp
-
-        ( ChooseSingleHazard, DecidingHazard commonGameState decidingHazardState ) ->
-            case decidingHazardState of
-                TwoOptions _ _ ->
-                    noOp
-
-                OneOption _ ->
-                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
-
-        ( ChooseSkipHazard, DecidingHazard commonGameState decidingHazardState ) ->
-            case decidingHazardState of
-                TwoOptions _ _ ->
-                    noOp
-
-                OneOption _ ->
-                    ( GameInProgress (FightingHazard commonGameState), Cmd.none )
+        ( ChooseSkipHazard, HazardSelection commonState (One card) ) ->
+            ( GameInProgress (toNextPhase (One card) commonState), Cmd.none )
 
         _ ->
             noOp
@@ -184,21 +216,21 @@ view model =
 
         GameInProgress gameState ->
             case gameState of
-                DecidingHazard _ (TwoOptions leftHazard rightHazard) ->
+                HazardSelection _ (Two leftHazard rightHazard) ->
                     div []
                         [ div [ class "m-6 text-xl" ] [ text "Decide Hazard" ]
                         , div [ class "m-6 flex" ]
-                            [ button [ class "inline-block mr-4" ] [ text "left" ]
-                            , button [ class "inline-block mr-4" ] [ text "right" ]
+                            [ button [ class "inline-block mr-4", onClick ChooseLeftHazard ] [ text "left" ]
+                            , button [ class "inline-block mr-4", onClick ChooseRightHazard ] [ text "right" ]
                             ]
                         ]
 
-                DecidingHazard _ (OneOption hazard) ->
+                HazardSelection _ (One hazard) ->
                     div []
                         [ div [ class "m-6 text-xl" ] [ text "Decide Hazard" ]
                         , div [ class "m-6 flex" ]
-                            [ button [ class "inline-block mr-4" ] [ text "Choose hazard" ]
-                            , button [ class "inline-block mr-4" ] [ text "Skip hazard" ]
+                            [ button [ class "inline-block mr-4", onClick ChooseSingleHazard ] [ text "Choose hazard" ]
+                            , button [ class "inline-block mr-4", onClick ChooseSkipHazard ] [ text "Skip hazard" ]
                             ]
                         ]
 
