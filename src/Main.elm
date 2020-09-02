@@ -40,6 +40,18 @@ type alias CommonState =
     }
 
 
+type PlayedCard
+    = NormalCard Card
+    | AbilityCard Card Bool
+
+
+type alias FightingState =
+    { hazard : Card
+    , playedCardsLeft : List PlayedCard
+    , playedCardsRight : List PlayedCard
+    }
+
+
 type OneOrTwo a
     = Two a a
     | One a
@@ -55,9 +67,14 @@ discardOneOrTwo oneOrTwo list =
             first :: second :: list
 
 
+discardHazard : Card -> CommonState -> CommonState
+discardHazard hazard commonState =
+    { commonState | hazardDiscard = hazard :: commonState.hazardDiscard }
+
+
 type GameState
     = HazardSelection CommonState (OneOrTwo Card)
-    | FightingHazard CommonState
+    | FightingHazard CommonState FightingState
     | ResolvingFight CommonState
     | FinalShowdown CommonState
 
@@ -167,6 +184,11 @@ toNextPhase leftoverCards incompleteCommonState =
             toHazardSelection PhaseYellow
 
 
+toFightingHazard : Card -> CommonState -> GameState
+toFightingHazard hazard commonState =
+    FightingHazard commonState { hazard = hazard, playedCardsLeft = [], playedCardsRight = [] }
+
+
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
 updateGameInProgress msg gameState =
     let
@@ -175,19 +197,21 @@ updateGameInProgress msg gameState =
             ( GameInProgress gameState, Cmd.none )
     in
     case ( msg, gameState ) of
-        -- Hazard Selection phase
-        ( ChooseLeftHazard, HazardSelection commonState (Two _ _) ) ->
-            ( GameInProgress (FightingHazard commonState), Cmd.none )
+        -- HazardSelection
+        ( ChooseLeftHazard, HazardSelection commonState (Two left right) ) ->
+            ( GameInProgress (toFightingHazard left (discardHazard right commonState)), Cmd.none )
 
-        ( ChooseRightHazard, HazardSelection commonState (Two _ _) ) ->
-            ( GameInProgress (FightingHazard commonState), Cmd.none )
+        ( ChooseRightHazard, HazardSelection commonState (Two left right) ) ->
+            ( GameInProgress (toFightingHazard right (discardHazard left commonState)), Cmd.none )
 
-        ( ChooseSingleHazard, HazardSelection commonState (One _) ) ->
-            ( GameInProgress (FightingHazard commonState), Cmd.none )
+        ( ChooseSingleHazard, HazardSelection commonState (One hazard) ) ->
+            ( GameInProgress (toFightingHazard hazard commonState), Cmd.none )
 
         ( ChooseSkipHazard, HazardSelection commonState (One card) ) ->
             ( GameInProgress (toNextPhase (One card) commonState), Cmd.none )
 
+        -- Fight
+        -- (DrawCard, FightingHazard commonState)
         _ ->
             noOp
 
