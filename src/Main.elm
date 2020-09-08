@@ -1,14 +1,19 @@
 module Main exposing (main)
 
+import AgingCard exposing (AgingCard)
 import Browser
-import Card exposing (Card)
+import Deck exposing (Deck)
+import FightArea exposing (FightArea)
+import HazardCard exposing (HazardCard)
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import LifePoints
 import PirateCard exposing (PirateCard)
+import PlayerCard exposing (PlayerCard)
 import Random
 import Random.List
+import RobinsonCard exposing (RobinsonCard)
 
 
 main : Program () Model Msg
@@ -30,25 +35,11 @@ type alias CommonState =
     { seed : Random.Seed
     , lifePoints : LifePoints.Counter
     , phase : Phase
-    , agingCards : List Card
-    , fightingCards : List Card
-    , hazardCards : List Card
+    , agingCards : List AgingCard
     , leftPirate : PirateCard
     , rightPirate : PirateCard
-    , robinsonDiscard : List Card
-    , hazardDiscard : List Card
-    }
-
-
-type PlayedCard
-    = NormalCard Card
-    | AbilityCard Card Bool
-
-
-type alias FightingState =
-    { hazard : Card
-    , playedCardsLeft : List PlayedCard
-    , playedCardsRight : List PlayedCard
+    , hazardDeck : Deck HazardCard
+    , playerDeck : Deck PlayerCard
     }
 
 
@@ -57,31 +48,46 @@ type OneOrTwo a
     | One a
 
 
-discardOneOrTwo : OneOrTwo a -> List a -> List a
-discardOneOrTwo oneOrTwo list =
-    case oneOrTwo of
-        One card ->
-            card :: list
-
-        Two first second ->
-            first :: second :: list
-
-
-discardHazard : Card -> CommonState -> CommonState
-discardHazard hazard commonState =
-    { commonState | hazardDiscard = hazard :: commonState.hazardDiscard }
+type ResolvingState
+    = PlayerWon HazardCard
+    | PlayerLost (List PlayerCard) (List PlayerCard)
 
 
 type GameState
-    = HazardSelection CommonState (OneOrTwo Card)
-    | FightingHazard CommonState FightingState
-    | ResolvingFight CommonState
+    = HazardSelection CommonState (OneOrTwo HazardCard)
+    | FightingHazard CommonState FightArea
+    | ResolvingFight CommonState ResolvingState
     | FinalShowdown CommonState
 
 
 type Model
     = GameInProgress GameState
     | GameOver
+
+
+discardOneOrTwo : OneOrTwo a -> Deck a -> Deck a
+discardOneOrTwo oneOrTwo deck =
+    case oneOrTwo of
+        One card ->
+            Deck.discard [ card ] deck
+
+        Two first second ->
+            Deck.discard [ first, second ] deck
+
+
+addTwoShuffleAndDraw : a -> a -> List a -> Random.Generator ( a, a, List a )
+addTwoShuffleAndDraw first second rest =
+    (first :: second :: rest)
+        |> Random.List.shuffle
+        |> Random.map
+            (\shuffledCards ->
+                case shuffledCards of
+                    topCard :: secondCard :: restShuffled ->
+                        ( topCard, secondCard, restShuffled )
+
+                    _ ->
+                        ( first, second, rest )
+            )
 
 
 init : () -> ( Model, Cmd Msg )
@@ -93,13 +99,27 @@ init _ =
             Random.initialSeed 0
 
         ( agingCards, seedAfterAgingShuffle ) =
-            Random.step Card.getInitialAgingCards initialSeed
+            Random.step AgingCard.getInitial initialSeed
 
-        ( robinsonCards, seedAfterRobinsonShuffle ) =
-            Random.step Card.getInitialRobinsonCards seedAfterAgingShuffle
+        ( robinsonCards, seedAfterRobinsonCards ) =
+            Random.step (Random.List.shuffle RobinsonCard.getInitial) seedAfterAgingShuffle
 
-        ( ( ( leftHazard, rightHazard ), hazardCards ), seedAfterHazardShuffle ) =
-            Random.step Card.getInitialHazardCards seedAfterRobinsonShuffle
+        playerDeck : Deck PlayerCard
+        playerDeck =
+            robinsonCards
+                |> List.map PlayerCard.fromRobinsonCard
+                |> Deck.createDeck
+
+        ( hazardOne, hazardTwo, remainingHazards ) =
+            HazardCard.getInitial
+
+        ( ( leftHazard, rightHazard, hazardCards ), seedAfterHazardShuffle ) =
+            Random.step (addTwoShuffleAndDraw hazardOne hazardTwo remainingHazards) seedAfterRobinsonCards
+
+        hazardDeck : Deck HazardCard
+        hazardDeck =
+            remainingHazards
+                |> Deck.createDeck
 
         ( ( leftPirate, rightPirate ), seedAfterPirateShuffle ) =
             Random.step PirateCard.getTwoPirates seedAfterHazardShuffle
@@ -110,15 +130,13 @@ init _ =
             , lifePoints = LifePoints.createCounter 20
             , phase = PhaseGreen
             , agingCards = agingCards
-            , fightingCards = robinsonCards
-            , hazardCards = hazardCards
             , leftPirate = leftPirate
             , rightPirate = rightPirate
-            , robinsonDiscard = []
-            , hazardDiscard = []
+            , playerDeck = playerDeck
+            , hazardDeck = hazardDeck
             }
 
-        hazardSelectionState : OneOrTwo Card
+        hazardSelectionState : OneOrTwo HazardCard
         hazardSelectionState =
             Two leftHazard rightHazard
     in
@@ -131,11 +149,14 @@ init _ =
 
 type Msg
     = EndGame
-      -- Hazard selection phase
+      -- Hazard selection
     | ChooseLeftHazard
     | ChooseRightHazard
     | ChooseSingleHazard
     | ChooseSkipHazard
+      -- Fighting hazard
+    | Draw
+    | EndFight
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -150,28 +171,35 @@ update msg model =
 
 {-| Returns the game state to hazard selection with the phase updated, or moves to the final showdown if already in PhaseRed
 -}
-toNextPhase : OneOrTwo Card -> CommonState -> GameState
-toNextPhase leftoverCards incompleteCommonState =
+handlePhaseComplete : OneOrTwo HazardCard -> CommonState -> GameState
+handlePhaseComplete leftoverCards incompleteCommonState =
     let
         commonState : CommonState
         commonState =
-            { incompleteCommonState | hazardDiscard = discardOneOrTwo leftoverCards incompleteCommonState.hazardDiscard }
+            { incompleteCommonState | hazardDeck = discardOneOrTwo leftoverCards incompleteCommonState.hazardDeck }
 
         toHazardSelection : Phase -> GameState
         toHazardSelection phase =
             let
-                ( shuffledHazards, newSeed ) =
-                    Random.step (Random.List.shuffle commonState.hazardDiscard) commonState.seed
+                ( shuffledHazards, seedAfterReshuffle ) =
+                    Random.step (Deck.reshuffle commonState.hazardDeck) commonState.seed
+
+                drawTwiceResultAndSeed : ( Deck.DrawTwiceResult HazardCard, Random.Seed )
+                drawTwiceResultAndSeed =
+                    Random.step (Deck.drawTwice shuffledHazards) seedAfterReshuffle
+
+                ( drawTwiceResult, seedAfterDraw ) =
+                    drawTwiceResultAndSeed
             in
-            case shuffledHazards of
-                [] ->
+            case drawTwiceResult of
+                Deck.NothingDrawn ->
                     HazardSelection { commonState | phase = phase } leftoverCards
 
-                [ singleCard ] ->
-                    HazardSelection { commonState | phase = phase, hazardDiscard = [], seed = newSeed } (One singleCard)
+                Deck.DrewOne newHazardDeck hazardCard ->
+                    HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = seedAfterDraw } (One hazardCard)
 
-                first :: second :: rest ->
-                    HazardSelection { commonState | phase = phase, hazardDiscard = rest, seed = newSeed } (Two first second)
+                Deck.DrewTwo newHazardDeck first second ->
+                    HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = seedAfterDraw } (Two first second)
     in
     case commonState.phase of
         PhaseRed ->
@@ -184,9 +212,9 @@ toNextPhase leftoverCards incompleteCommonState =
             toHazardSelection PhaseYellow
 
 
-toFightingHazard : Card -> CommonState -> GameState
+toFightingHazard : HazardCard -> CommonState -> GameState
 toFightingHazard hazard commonState =
-    FightingHazard commonState { hazard = hazard, playedCardsLeft = [], playedCardsRight = [] }
+    FightingHazard commonState (FightArea.createFightArea hazard)
 
 
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
@@ -199,19 +227,112 @@ updateGameInProgress msg gameState =
     case ( msg, gameState ) of
         -- HazardSelection
         ( ChooseLeftHazard, HazardSelection commonState (Two left right) ) ->
-            ( GameInProgress (toFightingHazard left (discardHazard right commonState)), Cmd.none )
+            ( GameInProgress (toFightingHazard left { commonState | hazardDeck = Deck.discard [ right ] commonState.hazardDeck }), Cmd.none )
 
         ( ChooseRightHazard, HazardSelection commonState (Two left right) ) ->
-            ( GameInProgress (toFightingHazard right (discardHazard left commonState)), Cmd.none )
+            ( GameInProgress (toFightingHazard right { commonState | hazardDeck = Deck.discard [ left ] commonState.hazardDeck }), Cmd.none )
 
         ( ChooseSingleHazard, HazardSelection commonState (One hazard) ) ->
             ( GameInProgress (toFightingHazard hazard commonState), Cmd.none )
 
         ( ChooseSkipHazard, HazardSelection commonState (One card) ) ->
-            ( GameInProgress (toNextPhase (One card) commonState), Cmd.none )
+            ( GameInProgress (handlePhaseComplete (One card) commonState), Cmd.none )
 
         -- Fight
-        -- (DrawCard, FightingHazard commonState)
+        ( Draw, FightingHazard commonState fightArea ) ->
+            let
+                { playerDeck, seed } =
+                    commonState
+            in
+            case Random.step (Deck.draw playerDeck) seed of
+                ( Nothing, _ ) ->
+                    noOp
+
+                ( Just ( drawnCard, newPlayerDeck ), newSeed ) ->
+                    let
+                        newCommonState : CommonState
+                        newCommonState =
+                            { commonState | seed = newSeed, playerDeck = newPlayerDeck }
+
+                        newFightArea : FightArea
+                        newFightArea =
+                            if FightArea.canDrawFreeCard fightArea then
+                                FightArea.playOnLeft drawnCard fightArea
+
+                            else
+                                FightArea.playOnRight drawnCard fightArea
+                    in
+                    ( GameInProgress (FightingHazard newCommonState newFightArea), Cmd.none )
+
+        ( EndFight, FightingHazard commonState fightArea ) ->
+            let
+                { phase, playerDeck, hazardDeck } =
+                    commonState
+
+                playerStrength : Int
+                playerStrength =
+                    FightArea.getPlayerStrength fightArea
+
+                hazard : HazardCard
+                hazard =
+                    FightArea.getHazard fightArea
+
+                hazardStrength : Int
+                hazardStrength =
+                    case phase of
+                        PhaseGreen ->
+                            HazardCard.getGreenValue hazard
+
+                        PhaseYellow ->
+                            HazardCard.getYellowValue hazard
+
+                        PhaseRed ->
+                            HazardCard.getRedValue hazard
+
+                playerWon : Bool
+                playerWon =
+                    playerStrength >= hazardStrength
+            in
+            if playerWon then
+                let
+                    discardedCards : List PlayerCard
+                    discardedCards =
+                        List.concat [ FightArea.getLeftCards fightArea, FightArea.getRightCards fightArea ]
+
+                    newPlayerDeck : Deck PlayerCard
+                    newPlayerDeck =
+                        Deck.discard discardedCards playerDeck
+
+                    newCommonState : CommonState
+                    newCommonState =
+                        { commonState | playerDeck = newPlayerDeck }
+
+                    resolvingState : ResolvingState
+                    resolvingState =
+                        PlayerWon hazard
+                in
+                ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
+
+            else
+                let
+                    newHazardDeck : Deck HazardCard
+                    newHazardDeck =
+                        Deck.discard [ hazard ] hazardDeck
+
+                    newLifePoints : LifePoints.Counter
+                    newLifePoints =
+                        LifePoints.decrementCounter (hazardStrength - playerStrength) commonState.lifePoints
+
+                    newCommonState : CommonState
+                    newCommonState =
+                        { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
+
+                    resolvingState : ResolvingState
+                    resolvingState =
+                        PlayerLost (FightArea.getLeftCards fightArea) (FightArea.getRightCards fightArea)
+                in
+                ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
+
         _ ->
             noOp
 

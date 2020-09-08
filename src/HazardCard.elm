@@ -1,46 +1,19 @@
-module Card exposing (Card, getInitialAgingCards, getInitialHazardCards, getInitialRobinsonCards)
+module HazardCard exposing (HazardCard, getFightingValue, getFreeCards, getGreenValue, getInitial, getRedValue, getYellowValue, hasAbility)
 
+import FightStats exposing (FightStats, SpecialAbility(..))
+import Maybe.Extra
 import Random
 import Random.List
 
 
-type Card
+type HazardCard
     = HazardCard HazardStats FightStats
-    | RobinsonCard FightStats
-    | AgingCard AgingType FightStats
 
 
 type alias HazardPhaseValues =
     { green : Int
     , yellow : Int
     , red : Int
-    }
-
-
-type SpecialAbility
-    = PlusOneLife
-    | PlusTwoLife
-    | DrawOne
-    | DrawTwo
-    | Destroy
-    | Double
-    | Copy
-    | PhaseMinusOne
-    | SortThree
-    | ExchangeOne
-    | ExchangeTwo
-    | BelowTheStack
-      -- Aging abilities
-    | MinusOneLife
-    | MinusTwoLife
-    | HighestCardNull
-    | StopDrawing
-
-
-type alias FightStats =
-    { title : String
-    , fightingValue : Int
-    , specialAbility : Maybe SpecialAbility
     }
 
 
@@ -51,127 +24,19 @@ type alias HazardStats =
     }
 
 
-type AgingType
-    = Normal
-    | Difficult
+getGreenValue : HazardCard -> Int
+getGreenValue (HazardCard { hazardPhaseValues } _) =
+    hazardPhaseValues.green
 
 
-
--- Aging Card Data
-
-
-veryTired : Card
-veryTired =
-    AgingCard Normal { title = "very tired", fightingValue = 0, specialAbility = Just StopDrawing }
+getYellowValue : HazardCard -> Int
+getYellowValue (HazardCard { hazardPhaseValues } _) =
+    hazardPhaseValues.yellow
 
 
-stupid : Card
-stupid =
-    AgingCard Normal { title = "stupid", fightingValue = -2, specialAbility = Nothing }
-
-
-hungry : Card
-hungry =
-    AgingCard Normal { title = "hungry", fightingValue = 0, specialAbility = Just MinusOneLife }
-
-
-scared : Card
-scared =
-    AgingCard Normal { title = "scared", fightingValue = 0, specialAbility = Just HighestCardNull }
-
-
-distracted : Card
-distracted =
-    AgingCard Normal { title = "distracted", fightingValue = -1, specialAbility = Nothing }
-
-
-veryStupid : Card
-veryStupid =
-    AgingCard Normal { title = "very stupid", fightingValue = -3, specialAbility = Nothing }
-
-
-moronic : Card
-moronic =
-    AgingCard Difficult { title = "moronic", fightingValue = -4, specialAbility = Nothing }
-
-
-suicidal : Card
-suicidal =
-    AgingCard Difficult { title = "suicidal", fightingValue = -5, specialAbility = Nothing }
-
-
-veryHungry : Card
-veryHungry =
-    AgingCard Difficult { title = "very hungry", fightingValue = 0, specialAbility = Just MinusTwoLife }
-
-
-normalAgingCards : List Card
-normalAgingCards =
-    [ veryTired
-    , stupid
-    , stupid
-    , hungry
-    , scared
-    , scared
-    , distracted
-    ]
-
-
-difficultAgingCards : List Card
-difficultAgingCards =
-    [ moronic, suicidal, veryHungry ]
-
-
-getInitialAgingCards : Random.Generator (List Card)
-getInitialAgingCards =
-    Random.map2
-        List.append
-        (Random.List.shuffle normalAgingCards)
-        (Random.List.shuffle difficultAgingCards)
-
-
-
--- Robinson Card data
-
-
-distractedRobinson : Card
-distractedRobinson =
-    RobinsonCard { title = "distracted", fightingValue = -1, specialAbility = Nothing }
-
-
-focused : Card
-focused =
-    RobinsonCard { title = "focused", fightingValue = 1, specialAbility = Nothing }
-
-
-weak : Card
-weak =
-    RobinsonCard { title = "weak", fightingValue = 0, specialAbility = Nothing }
-
-
-genius : Card
-genius =
-    RobinsonCard { title = "genius", fightingValue = 2, specialAbility = Nothing }
-
-
-eating : Card
-eating =
-    RobinsonCard { title = "eating", fightingValue = 0, specialAbility = Just PlusOneLife }
-
-
-robinsonCards : List Card
-robinsonCards =
-    List.concat
-        [ List.repeat 5 distractedRobinson
-        , List.repeat 3 focused
-        , List.repeat 7 weak
-        , [ genius, eating ]
-        ]
-
-
-getInitialRobinsonCards : Random.Generator (List Card)
-getInitialRobinsonCards =
-    Random.List.shuffle robinsonCards
+getRedValue : HazardCard -> Int
+getRedValue (HazardCard { hazardPhaseValues } _) =
+    hazardPhaseValues.red
 
 
 
@@ -207,12 +72,12 @@ cannibals =
 -- Hazard Card data
 
 
-food : Card
+food : HazardCard
 food =
     HazardCard withTheRaft { title = "food", fightingValue = 0, specialAbility = Just PlusOneLife }
 
 
-hazardCards : List Card
+hazardCards : List HazardCard
 hazardCards =
     [ food
     , food
@@ -247,17 +112,44 @@ hazardCards =
     ]
 
 
-getInitialHazardCards : Random.Generator ( ( Card, Card ), List Card )
-getInitialHazardCards =
-    hazardCards
-        |> Random.List.shuffle
-        |> Random.map
-            (\shuffledList ->
-                case shuffledList of
-                    first :: second :: rest ->
-                        ( ( first, second ), rest )
+getInitial : ( HazardCard, HazardCard, List HazardCard )
+getInitial =
+    ( food, food, hazardCards )
 
-                    _ ->
-                        -- should not be reachable
-                        ( ( food, food ), shuffledList )
-            )
+
+
+-- getInitial : Random.Generator ( ( HazardCard, HazardCard ), List HazardCard )
+-- getInitial =
+--     hazardCards
+--         |> Random.List.shuffle
+--         |> Random.map
+--             (\shuffledList ->
+--                 case shuffledList of
+--                     first :: second :: rest ->
+--                         ( ( first, second ), rest )
+--                     _ ->
+--                         -- should not be reachable
+--                         ( ( food, food ), shuffledList )
+--             )
+
+
+getFreeCards : HazardCard -> Int
+getFreeCards (HazardCard { freeCards } _) =
+    freeCards
+
+
+getFightStats : HazardCard -> FightStats
+getFightStats (HazardCard _ fightStats) =
+    fightStats
+
+
+hasAbility : HazardCard -> Bool
+hasAbility =
+    getFightStats
+        >> .specialAbility
+        >> Maybe.Extra.isJust
+
+
+getFightingValue : HazardCard -> Int
+getFightingValue =
+    getFightStats >> .fightingValue
