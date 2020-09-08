@@ -1,6 +1,18 @@
-module FightArea exposing (FightArea, canDrawFreeCard, createFightArea, getHazard, getLeftCards, getPlayerStrength, getRightCards, playOnLeft, playOnRight)
+module FightArea exposing
+    ( FightArea
+    , canDrawFreeCard
+    , createFightArea
+    , getHazard
+    , getHazardStrength
+    , getLeftCards
+    , getPlayerStrength
+    , getRightCards
+    , playOnLeft
+    , playOnRight
+    )
 
 import HazardCard exposing (HazardCard)
+import Phase exposing (Phase(..))
 import PlayerCard exposing (PlayerCard)
 
 
@@ -69,6 +81,19 @@ getPlayerStrength (FightArea _ playedCardsLeft playedCardsRight) =
 getHazard : FightArea -> HazardCard
 getHazard (FightArea hazard _ _) =
     hazard
+
+
+getHazardStrength : Phase -> FightArea -> Int
+getHazardStrength phase (FightArea hazard _ _) =
+    case phase of
+        PhaseGreen ->
+            HazardCard.getGreenValue hazard
+
+        PhaseYellow ->
+            HazardCard.getYellowValue hazard
+
+        PhaseRed ->
+            HazardCard.getRedValue hazard
 
 
 getLeftCards : FightArea -> List PlayerCard

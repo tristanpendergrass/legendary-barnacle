@@ -25,12 +25,6 @@ main =
 -- MODEL
 
 
-type Phase
-    = PhaseGreen
-    | PhaseYellow
-    | PhaseRed
-
-
 type alias CommonState =
     { seed : Random.Seed
     , lifePoints : LifePoints.Counter
@@ -279,15 +273,7 @@ updateGameInProgress msg gameState =
 
                 hazardStrength : Int
                 hazardStrength =
-                    case phase of
-                        PhaseGreen ->
-                            HazardCard.getGreenValue hazard
-
-                        PhaseYellow ->
-                            HazardCard.getYellowValue hazard
-
-                        PhaseRed ->
-                            HazardCard.getRedValue hazard
+                    FightArea.getHazardStrength phase fightArea
 
                 playerWon : Bool
                 playerWon =
