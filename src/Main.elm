@@ -9,6 +9,7 @@ import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import LifePoints
+import Phase exposing (Phase(..))
 import PirateCard exposing (PirateCard)
 import PlayerCard exposing (PlayerCard)
 import Random
@@ -151,6 +152,7 @@ type Msg
       -- Fighting hazard
     | Draw
     | EndFight
+    | ActivateAbility FightArea.FightAreaIndex
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -318,6 +320,26 @@ updateGameInProgress msg gameState =
                         PlayerLost (FightArea.getLeftCards fightArea) (FightArea.getRightCards fightArea)
                 in
                 ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
+
+        ( ActivateAbility fightAreaIndex, FightingHazard commonState fightArea ) ->
+            if FightArea.cardCanBeActivated fightAreaIndex fightArea then
+                let
+                    newFightArea : FightArea
+                    newFightArea =
+                        FightArea.setCardUsed fightAreaIndex fightArea
+
+                    newLifePoints : LifePoints.Counter
+                    newLifePoints =
+                        LifePoints.incrementCounter commonState.lifePoints
+
+                    newCommonState : CommonState
+                    newCommonState =
+                        { commonState | lifePoints = newLifePoints }
+                in
+                ( GameInProgress (FightingHazard newCommonState newFightArea), Cmd.none )
+
+            else
+                noOp
 
         _ ->
             noOp
