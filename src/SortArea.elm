@@ -1,4 +1,4 @@
-module SortArea exposing (ChangeOrderType, DiscardType, SortArea, getCards, getDiscard)
+module SortArea exposing (ChangeOrderType, DiscardType, SortArea, changeOrder, getCards)
 
 import PlayerCard exposing (PlayerCard)
 
@@ -30,10 +30,7 @@ type DiscardChoiceThree
 type ChangeOrderType
     = OneToTwo
     | OneToThree
-    | TwoToOne
     | TwoToThree
-    | ThreeToOne
-    | ThreeToTwo
 
 
 type DiscardType
@@ -42,39 +39,60 @@ type DiscardType
     | Third
 
 
-getCards : SortArea a -> List a
+getCards : SortArea a -> { cardsToKeep : List a, cardsToDiscard : List a }
 getCards sortArea =
     case sortArea of
-        OneRevealed first _ ->
-            [ first ]
+        OneRevealed first DiscardZeroOfOne ->
+            { cardsToKeep = [ first ], cardsToDiscard = [] }
 
-        TwoRevealed first second _ ->
-            [ first, second ]
+        OneRevealed first DiscardOneOfOne ->
+            { cardsToKeep = [], cardsToDiscard = [ first ] }
 
-        ThreeRevealed first second third _ ->
-            [ first, second, third ]
+        TwoRevealed first second DiscardZeroOfTwo ->
+            { cardsToKeep = [ first, second ], cardsToDiscard = [] }
+
+        TwoRevealed first second DiscardOneOfTwo ->
+            { cardsToKeep = [ second ], cardsToDiscard = [ first ] }
+
+        TwoRevealed first second DiscardTwoOfTwo ->
+            { cardsToKeep = [ first ], cardsToDiscard = [ second ] }
+
+        ThreeRevealed first second third DiscardZeroOfThree ->
+            { cardsToKeep = [ first, second, third ], cardsToDiscard = [] }
+
+        ThreeRevealed first second third DiscardOneOfThree ->
+            { cardsToKeep = [ second, third ], cardsToDiscard = [ first ] }
+
+        ThreeRevealed first second third DiscardTwoOfThree ->
+            { cardsToKeep = [ first, third ], cardsToDiscard = [ second ] }
+
+        ThreeRevealed first second third DiscardThreeOfThree ->
+            { cardsToKeep = [ first, second ], cardsToDiscard = [ third ] }
 
 
-getDiscard : SortArea a -> Maybe a
-getDiscard sortArea =
-    case sortArea of
-        OneRevealed card DiscardOneOfOne ->
-            Just card
+changeOrder : ChangeOrderType -> SortArea a -> SortArea a
+changeOrder changeOrderType sortArea =
+    case ( sortArea, changeOrderType ) of
+        ( TwoRevealed first second DiscardZeroOfTwo, OneToTwo ) ->
+            TwoRevealed second first DiscardZeroOfTwo
 
-        TwoRevealed first _ DiscardOneOfTwo ->
-            Just first
+        ( ThreeRevealed first second third DiscardZeroOfThree, OneToTwo ) ->
+            ThreeRevealed second first third DiscardZeroOfThree
 
-        TwoRevealed _ second DiscardTwoOfTwo ->
-            Just second
+        ( ThreeRevealed first second third DiscardThreeOfThree, OneToTwo ) ->
+            ThreeRevealed second first third DiscardThreeOfThree
 
-        ThreeRevealed first _ _ DiscardOneOfThree ->
-            Just first
+        ( ThreeRevealed first second third DiscardZeroOfThree, OneToThree ) ->
+            ThreeRevealed third second first DiscardZeroOfThree
 
-        ThreeRevealed _ second _ DiscardTwoOfThree ->
-            Just second
+        ( ThreeRevealed first second third DiscardTwoOfThree, OneToThree ) ->
+            ThreeRevealed third second first DiscardTwoOfThree
 
-        ThreeRevealed _ _ third DiscardThreeOfThree ->
-            Just third
+        ( ThreeRevealed first second third DiscardZeroOfThree, TwoToThree ) ->
+            ThreeRevealed first third second DiscardZeroOfThree
+
+        ( ThreeRevealed first second third DiscardOneOfThree, TwoToThree ) ->
+            ThreeRevealed first third second DiscardOneOfThree
 
         _ ->
-            Nothing
+            sortArea

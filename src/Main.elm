@@ -354,23 +354,15 @@ updateGameInProgress msg gameState =
                 noOp
 
         ( SortFinish, FightingHazard commonState fightArea (SortView sortArea) ) ->
-            -- TODO: mark sort card as used
             let
-                cardsToPutBack : List PlayerCard
-                cardsToPutBack =
+                { cardsToKeep, cardsToDiscard } =
                     SortArea.getCards sortArea
-
-                discards : List PlayerCard
-                discards =
-                    SortArea.getDiscard sortArea
-                        |> Maybe.map List.singleton
-                        |> Maybe.withDefault []
 
                 newPlayerDeck : Deck PlayerCard
                 newPlayerDeck =
                     commonState.playerDeck
-                        |> Deck.putOnDrawPile cardsToPutBack
-                        |> Deck.discard discards
+                        |> Deck.putOnDrawPile cardsToKeep
+                        |> Deck.discard cardsToDiscard
 
                 newCommonState : CommonState
                 newCommonState =
@@ -383,7 +375,12 @@ updateGameInProgress msg gameState =
             ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
         ( SortChangeOrder changeOrderType, FightingHazard commonState fightArea (SortView sortArea) ) ->
-            noOp
+            let
+                newSortArea : SortArea PlayerCard
+                newSortArea =
+                    SortArea.changeOrder changeOrderType sortArea
+            in
+            ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
 
         ( SortDiscard discardType, FightingHazard commonState fightArea (SortView sortArea) ) ->
             noOp
