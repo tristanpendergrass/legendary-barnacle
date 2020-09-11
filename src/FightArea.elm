@@ -4,7 +4,6 @@ module FightArea exposing
     , canDrawFreeCard
     , cardCanBeActivated
     , createFightArea
-    , getAbilityCardWithIsUsed
     , getCard
     , getHazard
     , getHazardStrength
@@ -14,6 +13,7 @@ module FightArea exposing
     , playOnLeft
     , playOnRight
     , setCardUsed
+    , setInUseToUsed
     )
 
 import HazardCard exposing (HazardCard)
@@ -27,9 +27,15 @@ type FightAreaIndex
     | RightIndex Int
 
 
+type UsedState
+    = NotUsed
+    | Used
+    | InUse
+
+
 type PlayedCard
     = NormalCard PlayerCard
-    | AbilityCard PlayerCard Bool
+    | AbilityCard PlayerCard UsedState
 
 
 type FightArea
@@ -39,7 +45,7 @@ type FightArea
 toPlayedCard : PlayerCard -> PlayedCard
 toPlayedCard card =
     if PlayerCard.hasAbility card then
-        AbilityCard card False
+        AbilityCard card NotUsed
 
     else
         NormalCard card
@@ -55,13 +61,13 @@ fromPlayedCard playedCard =
             card
 
 
-playedCardIsUsed : PlayedCard -> Bool
-playedCardIsUsed playedCard =
+playedCardCanBeUsed : PlayedCard -> Bool
+playedCardCanBeUsed playedCard =
     case playedCard of
-        AbilityCard _ isUsed ->
-            not isUsed
+        AbilityCard _ NotUsed ->
+            True
 
-        NormalCard _ ->
+        _ ->
             False
 
 
@@ -148,25 +154,6 @@ getCard fightAreaIndex fightArea =
         |> Maybe.map fromPlayedCard
 
 
-getAbilityCardWithIsUsed : FightAreaIndex -> FightArea -> Maybe ( PlayerCard, Bool )
-getAbilityCardWithIsUsed fightAreaIndex fightArea =
-    let
-        ( index, cards ) =
-            getSideAndIndex fightAreaIndex fightArea
-    in
-    cards
-        |> List.Extra.getAt index
-        |> Maybe.andThen
-            (\card ->
-                case card of
-                    AbilityCard abilityCard isUsed ->
-                        Just ( abilityCard, isUsed )
-
-                    NormalCard _ ->
-                        Nothing
-            )
-
-
 setCardUsed : FightAreaIndex -> FightArea -> FightArea
 setCardUsed fightAreaIndex (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
     let
@@ -177,7 +164,7 @@ setCardUsed fightAreaIndex (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
                     playedCard
 
                 AbilityCard card _ ->
-                    AbilityCard card True
+                    AbilityCard card Used
 
         setUsedIfIndexMatches : Int -> Int -> PlayedCard -> PlayedCard
         setUsedIfIndexMatches passedIndex i playedCard =
@@ -209,5 +196,23 @@ cardCanBeActivated fightAreaIndex fightArea =
     in
     cards
         |> List.Extra.getAt index
-        |> Maybe.map playedCardIsUsed
+        |> Maybe.map playedCardCanBeUsed
         |> Maybe.withDefault False
+
+
+setInUseToUsed : FightArea -> FightArea
+setInUseToUsed (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
+    let
+        setInUseCardToUsed : PlayedCard -> PlayedCard
+        setInUseCardToUsed playedCard =
+            case playedCard of
+                AbilityCard card InUse ->
+                    AbilityCard card Used
+
+                _ ->
+                    playedCard
+    in
+    FightArea
+        hazard
+        (List.map setInUseCardToUsed cardsPlayedLeft)
+        (List.map setInUseCardToUsed cardsPlayedRight)

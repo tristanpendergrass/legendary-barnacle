@@ -1,4 +1,4 @@
-module Deck exposing (Deck, DrawTwiceResult(..), createDeck, discard, draw, drawTwice, reshuffle)
+module Deck exposing (Deck, DrawTwiceResult(..), createDeck, discard, draw, drawTwice, putOnDrawPile, reshuffle)
 
 import Random
 import Random.List
@@ -85,3 +85,8 @@ drawTwice deck =
                                             DrewTwo deckWithTwoDrawn firstCard secondCard
                                 )
             )
+
+
+putOnDrawPile : List a -> Deck a -> Deck a
+putOnDrawPile newCards (Deck drawPile discardPile) =
+    Deck (List.append newCards drawPile) discardPile

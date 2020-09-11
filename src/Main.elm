@@ -15,6 +15,7 @@ import PlayerCard exposing (PlayerCard)
 import Random
 import Random.List
 import RobinsonCard exposing (RobinsonCard)
+import SortArea exposing (SortArea)
 
 
 main : Program () Model Msg
@@ -48,9 +49,14 @@ type ResolvingState
     | PlayerLost (List PlayerCard) (List PlayerCard)
 
 
+type FightView
+    = NormalFightView
+    | SortView (SortArea PlayerCard)
+
+
 type GameState
     = HazardSelection CommonState (OneOrTwo HazardCard)
-    | FightingHazard CommonState FightArea
+    | FightingHazard CommonState FightArea FightView
     | ResolvingFight CommonState ResolvingState
     | FinalShowdown CommonState
 
@@ -150,9 +156,15 @@ type Msg
     | ChooseSingleHazard
     | ChooseSkipHazard
       -- Fighting hazard
+      -- case FightView of NormalView
     | Draw
     | EndFight
-    | ActivateAbility FightArea.FightAreaIndex
+    | UseAbility FightArea.FightAreaIndex
+      -- case FightView of SortView
+    | SortFinish
+    | SortChangeOrder SortArea.ChangeOrderType
+    | SortDiscard SortArea.DiscardType
+    | SortReveal
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -210,7 +222,7 @@ handlePhaseComplete leftoverCards incompleteCommonState =
 
 toFightingHazard : HazardCard -> CommonState -> GameState
 toFightingHazard hazard commonState =
-    FightingHazard commonState (FightArea.createFightArea hazard)
+    FightingHazard commonState (FightArea.createFightArea hazard) NormalFightView
 
 
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
@@ -235,7 +247,7 @@ updateGameInProgress msg gameState =
             ( GameInProgress (handlePhaseComplete (One card) commonState), Cmd.none )
 
         -- Fight
-        ( Draw, FightingHazard commonState fightArea ) ->
+        ( Draw, FightingHazard commonState fightArea NormalFightView ) ->
             let
                 { playerDeck, seed } =
                     commonState
@@ -258,9 +270,9 @@ updateGameInProgress msg gameState =
                             else
                                 FightArea.playOnRight drawnCard fightArea
                     in
-                    ( GameInProgress (FightingHazard newCommonState newFightArea), Cmd.none )
+                    ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
-        ( EndFight, FightingHazard commonState fightArea ) ->
+        ( EndFight, FightingHazard commonState fightArea NormalFightView ) ->
             let
                 { phase, playerDeck, hazardDeck } =
                     commonState
@@ -321,7 +333,7 @@ updateGameInProgress msg gameState =
                 in
                 ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
-        ( ActivateAbility fightAreaIndex, FightingHazard commonState fightArea ) ->
+        ( UseAbility fightAreaIndex, FightingHazard commonState fightArea NormalFightView ) ->
             if FightArea.cardCanBeActivated fightAreaIndex fightArea then
                 let
                     newFightArea : FightArea
@@ -336,10 +348,48 @@ updateGameInProgress msg gameState =
                     newCommonState =
                         { commonState | lifePoints = newLifePoints }
                 in
-                ( GameInProgress (FightingHazard newCommonState newFightArea), Cmd.none )
+                ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
             else
                 noOp
+
+        ( SortFinish, FightingHazard commonState fightArea (SortView sortArea) ) ->
+            -- TODO: mark sort card as used
+            let
+                cardsToPutBack : List PlayerCard
+                cardsToPutBack =
+                    SortArea.getCards sortArea
+
+                discards : List PlayerCard
+                discards =
+                    SortArea.getDiscard sortArea
+                        |> Maybe.map List.singleton
+                        |> Maybe.withDefault []
+
+                newPlayerDeck : Deck PlayerCard
+                newPlayerDeck =
+                    commonState.playerDeck
+                        |> Deck.putOnDrawPile cardsToPutBack
+                        |> Deck.discard discards
+
+                newCommonState : CommonState
+                newCommonState =
+                    { commonState | playerDeck = newPlayerDeck }
+
+                newFightArea : FightArea
+                newFightArea =
+                    FightArea.setInUseToUsed fightArea
+            in
+            ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+
+        ( SortChangeOrder changeOrderType, FightingHazard commonState fightArea (SortView sortArea) ) ->
+            noOp
+
+        ( SortDiscard discardType, FightingHazard commonState fightArea (SortView sortArea) ) ->
+            noOp
+
+        ( SortReveal, FightingHazard commonState fightArea (SortView sortArea) ) ->
+            noOp
 
         _ ->
             noOp
