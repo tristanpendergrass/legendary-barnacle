@@ -1,4 +1,4 @@
-module SortArea exposing (ChangeOrderType, DiscardType, SortArea, changeOrder, getCards)
+module SortArea exposing (ChangeOrderType, SortArea, SortIndex, changeOrder, getCards, toggleDiscard)
 
 import PlayerCard exposing (PlayerCard)
 
@@ -33,7 +33,7 @@ type ChangeOrderType
     | TwoToThree
 
 
-type DiscardType
+type SortIndex
     = First
     | Second
     | Third
@@ -93,6 +93,73 @@ changeOrder changeOrderType sortArea =
 
         ( ThreeRevealed first second third DiscardOneOfThree, TwoToThree ) ->
             ThreeRevealed first third second DiscardOneOfThree
+
+        _ ->
+            sortArea
+
+
+toggleDiscard : SortIndex -> SortArea a -> SortArea a
+toggleDiscard sortIndex sortArea =
+    case ( sortArea, sortIndex ) of
+        ( OneRevealed first DiscardZeroOfOne, First ) ->
+            OneRevealed first DiscardZeroOfOne
+
+        ( OneRevealed first DiscardOneOfOne, First ) ->
+            OneRevealed first DiscardZeroOfOne
+
+        ( TwoRevealed first second DiscardZeroOfTwo, First ) ->
+            TwoRevealed first second DiscardOneOfTwo
+
+        ( TwoRevealed first second DiscardZeroOfTwo, Second ) ->
+            TwoRevealed first second DiscardTwoOfTwo
+
+        ( TwoRevealed first second DiscardOneOfTwo, First ) ->
+            TwoRevealed first second DiscardZeroOfTwo
+
+        ( TwoRevealed first second DiscardOneOfTwo, Second ) ->
+            TwoRevealed first second DiscardTwoOfTwo
+
+        ( TwoRevealed first second DiscardTwoOfTwo, First ) ->
+            TwoRevealed first second DiscardOneOfTwo
+
+        ( TwoRevealed first second DiscardTwoOfTwo, Second ) ->
+            TwoRevealed first second DiscardZeroOfTwo
+
+        ( ThreeRevealed first second third DiscardZeroOfThree, First ) ->
+            ThreeRevealed first second third DiscardOneOfThree
+
+        ( ThreeRevealed first second third DiscardZeroOfThree, Second ) ->
+            ThreeRevealed first second third DiscardTwoOfThree
+
+        ( ThreeRevealed first second third DiscardZeroOfThree, Third ) ->
+            ThreeRevealed first second third DiscardThreeOfThree
+
+        ( ThreeRevealed first second third DiscardOneOfThree, First ) ->
+            ThreeRevealed first second third DiscardZeroOfThree
+
+        ( ThreeRevealed first second third DiscardOneOfThree, Second ) ->
+            ThreeRevealed first second third DiscardTwoOfThree
+
+        ( ThreeRevealed first second third DiscardOneOfThree, Third ) ->
+            ThreeRevealed first second third DiscardThreeOfThree
+
+        ( ThreeRevealed first second third DiscardTwoOfThree, First ) ->
+            ThreeRevealed first second third DiscardOneOfThree
+
+        ( ThreeRevealed first second third DiscardTwoOfThree, Second ) ->
+            ThreeRevealed first second third DiscardZeroOfThree
+
+        ( ThreeRevealed first second third DiscardTwoOfThree, Third ) ->
+            ThreeRevealed first second third DiscardThreeOfThree
+
+        ( ThreeRevealed first second third DiscardThreeOfThree, First ) ->
+            ThreeRevealed first second third DiscardThreeOfThree
+
+        ( ThreeRevealed first second third DiscardThreeOfThree, Second ) ->
+            ThreeRevealed first second third DiscardTwoOfThree
+
+        ( ThreeRevealed first second third DiscardThreeOfThree, Third ) ->
+            ThreeRevealed first second third DiscardZeroOfThree
 
         _ ->
             sortArea

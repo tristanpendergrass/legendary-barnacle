@@ -383,7 +383,12 @@ updateGameInProgress msg gameState =
             ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
 
         ( SortDiscard discardType, FightingHazard commonState fightArea (SortView sortArea) ) ->
-            noOp
+            let
+                newSortArea : SortArea PlayerCard
+                newSortArea =
+                    SortArea.toggleDiscard discardType sortArea
+            in
+            ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
 
         ( SortReveal, FightingHazard commonState fightArea (SortView sortArea) ) ->
             noOp
