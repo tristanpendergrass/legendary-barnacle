@@ -1,6 +1,4 @@
-module SortArea exposing (ChangeOrderType, SortArea, SortIndex, changeOrder, getCards, toggleDiscard)
-
-import PlayerCard exposing (PlayerCard)
+module SortArea exposing (ChangeOrderType, SortArea, SortIndex, attemptReveal, changeOrder, getCards, toggleDiscard)
 
 
 type SortArea a
@@ -163,3 +161,39 @@ toggleDiscard sortIndex sortArea =
 
         _ ->
             sortArea
+
+
+createTwoRevealed : a -> DiscardChoiceOne -> a -> SortArea a
+createTwoRevealed first discardChoice second =
+    case discardChoice of
+        DiscardZeroOfOne ->
+            TwoRevealed first second DiscardZeroOfTwo
+
+        DiscardOneOfOne ->
+            TwoRevealed first second DiscardOneOfTwo
+
+
+createThreeRevealed : a -> a -> DiscardChoiceTwo -> a -> SortArea a
+createThreeRevealed first second discardChoice third =
+    case discardChoice of
+        DiscardZeroOfTwo ->
+            ThreeRevealed first second third DiscardZeroOfThree
+
+        DiscardOneOfTwo ->
+            ThreeRevealed first second third DiscardOneOfThree
+
+        DiscardTwoOfTwo ->
+            ThreeRevealed first second third DiscardTwoOfThree
+
+
+attemptReveal : SortArea a -> Maybe (a -> SortArea a)
+attemptReveal sortArea =
+    case sortArea of
+        OneRevealed first discardChoice ->
+            Just (createTwoRevealed first discardChoice)
+
+        TwoRevealed first second discardChoice ->
+            Just (createThreeRevealed first second discardChoice)
+
+        ThreeRevealed _ _ _ _ ->
+            Nothing

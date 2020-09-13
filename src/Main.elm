@@ -163,7 +163,7 @@ type Msg
       -- case FightView of SortView
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
-    | SortDiscard SortArea.DiscardType
+    | SortDiscard SortArea.SortIndex
     | SortReveal
 
 
@@ -225,6 +225,20 @@ toFightingHazard hazard commonState =
     FightingHazard commonState (FightArea.createFightArea hazard) NormalFightView
 
 
+drawCard : CommonState -> Maybe ( PlayerCard, CommonState )
+drawCard commonState =
+    let
+        { playerDeck, seed } =
+            commonState
+    in
+    case Random.step (Deck.draw playerDeck) seed of
+        ( Nothing, _ ) ->
+            Nothing
+
+        ( Just ( drawnCard, newPlayerDeck ), newSeed ) ->
+            Just ( drawnCard, { commonState | playerDeck = newPlayerDeck, seed = newSeed } )
+
+
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
 updateGameInProgress msg gameState =
     let
@@ -248,20 +262,12 @@ updateGameInProgress msg gameState =
 
         -- Fight
         ( Draw, FightingHazard commonState fightArea NormalFightView ) ->
-            let
-                { playerDeck, seed } =
-                    commonState
-            in
-            case Random.step (Deck.draw playerDeck) seed of
-                ( Nothing, _ ) ->
+            case drawCard commonState of
+                Nothing ->
                     noOp
 
-                ( Just ( drawnCard, newPlayerDeck ), newSeed ) ->
+                Just ( drawnCard, newCommonState ) ->
                     let
-                        newCommonState : CommonState
-                        newCommonState =
-                            { commonState | seed = newSeed, playerDeck = newPlayerDeck }
-
                         newFightArea : FightArea
                         newFightArea =
                             if FightArea.canDrawFreeCard fightArea then
@@ -391,7 +397,17 @@ updateGameInProgress msg gameState =
             ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
 
         ( SortReveal, FightingHazard commonState fightArea (SortView sortArea) ) ->
-            noOp
+            case ( SortArea.attemptReveal sortArea, drawCard commonState ) of
+                ( Just onReveal, Just ( drawnCard, newCommonState ) ) ->
+                    let
+                        newSortArea : SortArea PlayerCard
+                        newSortArea =
+                            onReveal drawnCard
+                    in
+                    ( GameInProgress (FightingHazard newCommonState fightArea (SortView newSortArea)), Cmd.none )
+
+                _ ->
+                    noOp
 
         _ ->
             noOp
