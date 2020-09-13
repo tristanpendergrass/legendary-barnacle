@@ -1,17 +1,13 @@
 module FightArea exposing
     ( FightArea
-    , FightAreaIndex
-    , canDrawFreeCard
     , cardCanBeActivated
     , createFightArea
     , getCard
+    , getCards
     , getHazard
     , getHazardStrength
-    , getLeftCards
     , getPlayerStrength
-    , getRightCards
-    , playOnLeft
-    , playOnRight
+    , playCard
     , setCardUsed
     , setInUseToUsed
     )
@@ -20,11 +16,6 @@ import HazardCard exposing (HazardCard)
 import List.Extra
 import Phase exposing (Phase(..))
 import PlayerCard exposing (PlayerCard)
-
-
-type FightAreaIndex
-    = LeftIndex Int
-    | RightIndex Int
 
 
 type UsedState
@@ -39,7 +30,17 @@ type PlayedCard
 
 
 type FightArea
-    = FightArea HazardCard (List PlayedCard) (List PlayedCard)
+    = FightArea HazardCard (List PlayedCard)
+
+
+getPlayedCards : FightArea -> List PlayedCard
+getPlayedCards (FightArea _ cards) =
+    cards
+
+
+getHazard : FightArea -> HazardCard
+getHazard (FightArea hazard _) =
+    hazard
 
 
 toPlayedCard : PlayerCard -> PlayedCard
@@ -73,45 +74,28 @@ playedCardCanBeUsed playedCard =
 
 createFightArea : HazardCard -> FightArea
 createFightArea hazardCard =
-    FightArea hazardCard [] []
+    FightArea hazardCard []
 
 
-canDrawFreeCard : FightArea -> Bool
-canDrawFreeCard (FightArea hazard playedCardsLeft _) =
-    List.length playedCardsLeft < HazardCard.getFreeCards hazard
+playCard : PlayerCard -> FightArea -> FightArea
+playCard card (FightArea hazardCard cards) =
+    FightArea hazardCard (toPlayedCard card :: cards)
 
 
-playOnLeft : PlayerCard -> FightArea -> FightArea
-playOnLeft card (FightArea hazardCard cardsPlayedLeft cardsPlayedRight) =
-    FightArea hazardCard (toPlayedCard card :: cardsPlayedLeft) cardsPlayedRight
-
-
-playOnRight : PlayerCard -> FightArea -> FightArea
-playOnRight card (FightArea hazardCard cardsPlayedLeft cardsPlayedRight) =
-    FightArea hazardCard cardsPlayedLeft (toPlayedCard card :: cardsPlayedRight)
+getPlayedCardStrength : PlayedCard -> Int
+getPlayedCardStrength playedCard =
+    playedCard
+        |> fromPlayedCard
+        |> PlayerCard.getFightingValue
 
 
 getPlayerStrength : FightArea -> Int
-getPlayerStrength (FightArea _ playedCardsLeft playedCardsRight) =
-    let
-        getPlayedCardStrength : PlayedCard -> Int
-        getPlayedCardStrength playedCard =
-            playedCard
-                |> fromPlayedCard
-                |> PlayerCard.getFightingValue
-    in
-    List.concat [ playedCardsLeft, playedCardsRight ]
-        |> List.map getPlayedCardStrength
-        |> List.foldl (+) 0
-
-
-getHazard : FightArea -> HazardCard
-getHazard (FightArea hazard _ _) =
-    hazard
+getPlayerStrength =
+    getPlayedCards >> List.map getPlayedCardStrength >> List.foldl (+) 0
 
 
 getHazardStrength : Phase -> FightArea -> Int
-getHazardStrength phase (FightArea hazard _ _) =
+getHazardStrength phase (FightArea hazard _) =
     case phase of
         PhaseGreen ->
             HazardCard.getGreenValue hazard
@@ -123,39 +107,16 @@ getHazardStrength phase (FightArea hazard _ _) =
             HazardCard.getRedValue hazard
 
 
-getLeftCards : FightArea -> List PlayerCard
-getLeftCards (FightArea _ cardsPlayedLeft _) =
-    List.map fromPlayedCard cardsPlayedLeft
-
-
-getRightCards : FightArea -> List PlayerCard
-getRightCards (FightArea _ _ cardsPlayedRight) =
-    List.map fromPlayedCard cardsPlayedRight
-
-
-getSideAndIndex : FightAreaIndex -> FightArea -> ( Int, List PlayedCard )
-getSideAndIndex fightAreaIndex (FightArea _ cardsPlayedLeft cardsPlayedRight) =
-    case fightAreaIndex of
-        LeftIndex index ->
-            ( index, cardsPlayedLeft )
-
-        RightIndex index ->
-            ( index, cardsPlayedRight )
-
-
-getCard : FightAreaIndex -> FightArea -> Maybe PlayerCard
-getCard fightAreaIndex fightArea =
-    let
-        ( index, cards ) =
-            getSideAndIndex fightAreaIndex fightArea
-    in
-    cards
+getCard : Int -> FightArea -> Maybe PlayerCard
+getCard index fightArea =
+    fightArea
+        |> getPlayedCards
         |> List.Extra.getAt index
         |> Maybe.map fromPlayedCard
 
 
-setCardUsed : FightAreaIndex -> FightArea -> FightArea
-setCardUsed fightAreaIndex (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
+setCardUsed : Int -> FightArea -> FightArea
+setCardUsed index (FightArea hazard cards) =
     let
         useCard : PlayedCard -> PlayedCard
         useCard playedCard =
@@ -174,34 +135,22 @@ setCardUsed fightAreaIndex (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
             else
                 playedCard
     in
-    case fightAreaIndex of
-        LeftIndex index ->
-            FightArea
-                hazard
-                (List.indexedMap (setUsedIfIndexMatches index) cardsPlayedLeft)
-                cardsPlayedRight
-
-        RightIndex index ->
-            FightArea
-                hazard
-                cardsPlayedLeft
-                (List.indexedMap (setUsedIfIndexMatches index) cardsPlayedRight)
+    FightArea
+        hazard
+        (List.indexedMap (setUsedIfIndexMatches index) cards)
 
 
-cardCanBeActivated : FightAreaIndex -> FightArea -> Bool
-cardCanBeActivated fightAreaIndex fightArea =
-    let
-        ( index, cards ) =
-            getSideAndIndex fightAreaIndex fightArea
-    in
-    cards
+cardCanBeActivated : Int -> FightArea -> Bool
+cardCanBeActivated index fightArea =
+    fightArea
+        |> getPlayedCards
         |> List.Extra.getAt index
         |> Maybe.map playedCardCanBeUsed
         |> Maybe.withDefault False
 
 
 setInUseToUsed : FightArea -> FightArea
-setInUseToUsed (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
+setInUseToUsed (FightArea hazard cards) =
     let
         setInUseCardToUsed : PlayedCard -> PlayedCard
         setInUseCardToUsed playedCard =
@@ -214,5 +163,9 @@ setInUseToUsed (FightArea hazard cardsPlayedLeft cardsPlayedRight) =
     in
     FightArea
         hazard
-        (List.map setInUseCardToUsed cardsPlayedLeft)
-        (List.map setInUseCardToUsed cardsPlayedRight)
+        (List.map setInUseCardToUsed cards)
+
+
+getCards : FightArea -> List PlayerCard
+getCards =
+    getPlayedCards >> List.map fromPlayedCard

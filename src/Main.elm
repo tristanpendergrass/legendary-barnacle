@@ -46,7 +46,7 @@ type OneOrTwo a
 
 type ResolvingState
     = PlayerWon HazardCard
-    | PlayerLost (List PlayerCard) (List PlayerCard)
+    | PlayerLost (List PlayerCard)
 
 
 type FightView
@@ -159,7 +159,7 @@ type Msg
       -- case FightView of NormalView
     | Draw
     | EndFight
-    | UseAbility FightArea.FightAreaIndex
+    | UseAbility Int
       -- case FightView of SortView
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
@@ -270,11 +270,7 @@ updateGameInProgress msg gameState =
                     let
                         newFightArea : FightArea
                         newFightArea =
-                            if FightArea.canDrawFreeCard fightArea then
-                                FightArea.playOnLeft drawnCard fightArea
-
-                            else
-                                FightArea.playOnRight drawnCard fightArea
+                            FightArea.playCard drawnCard fightArea
                     in
                     ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
@@ -303,7 +299,7 @@ updateGameInProgress msg gameState =
                 let
                     discardedCards : List PlayerCard
                     discardedCards =
-                        List.concat [ FightArea.getLeftCards fightArea, FightArea.getRightCards fightArea ]
+                        FightArea.getCards fightArea
 
                     newPlayerDeck : Deck PlayerCard
                     newPlayerDeck =
@@ -335,7 +331,7 @@ updateGameInProgress msg gameState =
 
                     resolvingState : ResolvingState
                     resolvingState =
-                        PlayerLost (FightArea.getLeftCards fightArea) (FightArea.getRightCards fightArea)
+                        PlayerLost (FightArea.getCards fightArea)
                 in
                 ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
