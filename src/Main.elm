@@ -335,25 +335,26 @@ updateGameInProgress msg gameState =
                 in
                 ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
-        ( UseAbility fightAreaIndex, FightingHazard commonState fightArea NormalFightView ) ->
-            if FightArea.cardCanBeActivated fightAreaIndex fightArea then
-                let
-                    newFightArea : FightArea
-                    newFightArea =
-                        FightArea.setCardUsed fightAreaIndex fightArea
+        ( UseAbility index, FightingHazard commonState fightArea NormalFightView ) ->
+            case FightArea.attemptUse index fightArea of
+                Just { setCardInUse, setCardUsed } ->
+                    let
+                        newLifePoints : LifePoints.Counter
+                        newLifePoints =
+                            LifePoints.incrementCounter commonState.lifePoints
 
-                    newLifePoints : LifePoints.Counter
-                    newLifePoints =
-                        LifePoints.incrementCounter commonState.lifePoints
+                        newCommonState : CommonState
+                        newCommonState =
+                            { commonState | lifePoints = newLifePoints }
 
-                    newCommonState : CommonState
-                    newCommonState =
-                        { commonState | lifePoints = newLifePoints }
-                in
-                ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+                        newFightArea : FightArea
+                        newFightArea =
+                            setCardUsed
+                    in
+                    ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
-            else
-                noOp
+                Nothing ->
+                    noOp
 
         ( SortFinish, FightingHazard commonState fightArea (SortView sortArea) ) ->
             let

@@ -1,6 +1,6 @@
 module FightArea exposing
     ( FightArea
-    , cardCanBeActivated
+    , attemptUse
     , createFightArea
     , getCard
     , getCards
@@ -140,13 +140,21 @@ setCardUsed index (FightArea hazard cards) =
         (List.indexedMap (setUsedIfIndexMatches index) cards)
 
 
-cardCanBeActivated : Int -> FightArea -> Bool
-cardCanBeActivated index fightArea =
-    fightArea
-        |> getPlayedCards
-        |> List.Extra.getAt index
-        |> Maybe.map playedCardCanBeUsed
-        |> Maybe.withDefault False
+attemptUse : Int -> FightArea -> Maybe { setCardInUse : FightArea, setCardUsed : FightArea }
+attemptUse index (FightArea hazardCard playedCards) =
+    List.Extra.getAt index playedCards
+        |> Maybe.andThen
+            (\card ->
+                case card of
+                    AbilityCard playerCard NotUsed ->
+                        Just
+                            { setCardInUse = FightArea hazardCard (List.concat [ List.take index playedCards, [ AbilityCard playerCard InUse ], List.drop (index + 1) playedCards ])
+                            , setCardUsed = FightArea hazardCard (List.concat [ List.take index playedCards, [ AbilityCard playerCard Used ], List.drop (index + 1) playedCards ])
+                            }
+
+                    _ ->
+                        Nothing
+            )
 
 
 setInUseToUsed : FightArea -> FightArea
