@@ -1,4 +1,4 @@
-module RobinsonCard exposing (RobinsonCard, getFightingValue, getInitial, hasAbility)
+module RobinsonCard exposing (RobinsonCard, getAbility, getFightingValue, getInitial, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -57,6 +57,11 @@ hasAbility =
     getFightStats
         >> .specialAbility
         >> Maybe.Extra.isJust
+
+
+getAbility : RobinsonCard -> Maybe SpecialAbility
+getAbility =
+    getFightStats >> .specialAbility
 
 
 getFightingValue : RobinsonCard -> Int

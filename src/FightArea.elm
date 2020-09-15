@@ -12,6 +12,7 @@ module FightArea exposing
     , setInUseToUsed
     )
 
+import FightStats exposing (SpecialAbility)
 import HazardCard exposing (HazardCard)
 import List.Extra
 import Phase exposing (Phase(..))
@@ -140,20 +141,38 @@ setCardUsed index (FightArea hazard cards) =
         (List.indexedMap (setUsedIfIndexMatches index) cards)
 
 
-attemptUse : Int -> FightArea -> Maybe { setCardInUse : FightArea, setCardUsed : FightArea }
+replaceAtIndex : Int -> a -> List a -> List a
+replaceAtIndex index x xs =
+    List.concat
+        [ List.take index xs
+        , [ x ]
+        , List.drop (index + 1) xs
+        ]
+
+
+getCardWithUnusedAbility : PlayedCard -> Maybe ( PlayerCard, SpecialAbility )
+getCardWithUnusedAbility playedCard =
+    case playedCard of
+        AbilityCard playerCard NotUsed ->
+            playerCard
+                |> PlayerCard.getAbility
+                |> Maybe.map (Tuple.pair playerCard)
+
+        _ ->
+            Nothing
+
+
+attemptUse : Int -> FightArea -> Maybe ( SpecialAbility, { setCardInUse : FightArea, setCardUsed : FightArea } )
 attemptUse index (FightArea hazardCard playedCards) =
     List.Extra.getAt index playedCards
-        |> Maybe.andThen
-            (\card ->
-                case card of
-                    AbilityCard playerCard NotUsed ->
-                        Just
-                            { setCardInUse = FightArea hazardCard (List.concat [ List.take index playedCards, [ AbilityCard playerCard InUse ], List.drop (index + 1) playedCards ])
-                            , setCardUsed = FightArea hazardCard (List.concat [ List.take index playedCards, [ AbilityCard playerCard Used ], List.drop (index + 1) playedCards ])
-                            }
-
-                    _ ->
-                        Nothing
+        |> Maybe.andThen getCardWithUnusedAbility
+        |> Maybe.map
+            (\( playerCard, ability ) ->
+                ( ability
+                , { setCardInUse = FightArea hazardCard (replaceAtIndex index (AbilityCard playerCard InUse) playedCards)
+                  , setCardUsed = FightArea hazardCard (replaceAtIndex index (AbilityCard playerCard Used) playedCards)
+                  }
+                )
             )
 
 

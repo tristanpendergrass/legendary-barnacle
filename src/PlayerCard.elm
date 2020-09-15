@@ -1,6 +1,7 @@
-module PlayerCard exposing (PlayerCard, fromAgingCard, fromHazardCard, fromRobinsonCard, getFightingValue, hasAbility)
+module PlayerCard exposing (PlayerCard, fromAgingCard, fromHazardCard, fromRobinsonCard, getAbility, getFightingValue, hasAbility)
 
 import AgingCard exposing (AgingCard)
+import FightStats exposing (SpecialAbility)
 import HazardCard exposing (HazardCard)
 import RobinsonCard exposing (RobinsonCard)
 
@@ -50,3 +51,16 @@ getFightingValue playerCard =
 
         RobinsonType robinsonCard ->
             RobinsonCard.getFightingValue robinsonCard
+
+
+getAbility : PlayerCard -> Maybe SpecialAbility
+getAbility playerCard =
+    case playerCard of
+        AgingType card ->
+            AgingCard.getAbility card
+
+        HazardType card ->
+            HazardCard.getAbility card
+
+        RobinsonType card ->
+            RobinsonCard.getAbility card

@@ -15,14 +15,18 @@ createCounter initialCount =
     Counter (clampLife initialCount)
 
 
-decrementCounter : Int -> Counter -> Counter
+decrementCounter : Int -> Counter -> Maybe Counter
 decrementCounter amount (Counter oldValue) =
     let
         newValue : Int
         newValue =
-            clampLife (oldValue - amount)
+            oldValue - amount
     in
-    Counter newValue
+    if newValue > -1 then
+        Just (Counter newValue)
+
+    else
+        Nothing
 
 
 getValue : Counter -> Int

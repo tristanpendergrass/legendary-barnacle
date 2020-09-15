@@ -4,6 +4,7 @@ import AgingCard exposing (AgingCard)
 import Browser
 import Deck exposing (Deck)
 import FightArea exposing (FightArea)
+import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (class)
@@ -316,42 +317,43 @@ updateGameInProgress msg gameState =
                 ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
             else
-                let
-                    newHazardDeck : Deck HazardCard
-                    newHazardDeck =
-                        Deck.discard [ hazard ] hazardDeck
+                case LifePoints.decrementCounter (hazardStrength - playerStrength) commonState.lifePoints of
+                    Nothing ->
+                        ( GameOver, Cmd.none )
 
-                    newLifePoints : LifePoints.Counter
-                    newLifePoints =
-                        LifePoints.decrementCounter (hazardStrength - playerStrength) commonState.lifePoints
+                    Just newLifePoints ->
+                        let
+                            newHazardDeck : Deck HazardCard
+                            newHazardDeck =
+                                Deck.discard [ hazard ] hazardDeck
 
-                    newCommonState : CommonState
-                    newCommonState =
-                        { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
+                            newCommonState : CommonState
+                            newCommonState =
+                                { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
 
-                    resolvingState : ResolvingState
-                    resolvingState =
-                        PlayerLost (FightArea.getCards fightArea)
-                in
-                ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
+                            resolvingState : ResolvingState
+                            resolvingState =
+                                PlayerLost (FightArea.getCards fightArea)
+                        in
+                        ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
         ( UseAbility index, FightingHazard commonState fightArea NormalFightView ) ->
             case FightArea.attemptUse index fightArea of
-                Just { setCardInUse, setCardUsed } ->
+                Just attemptUseResult ->
                     let
-                        newLifePoints : LifePoints.Counter
-                        newLifePoints =
-                            LifePoints.incrementCounter commonState.lifePoints
+                        ( ability, { setCardInUse, setCardUsed } ) =
+                            attemptUseResult
 
-                        newCommonState : CommonState
-                        newCommonState =
-                            { commonState | lifePoints = newLifePoints }
-
-                        newFightArea : FightArea
-                        newFightArea =
-                            setCardUsed
+                        newGameState =
+                            resolveAbility
+                                { ability = ability
+                                , setCardInUse = setCardInUse
+                                , setCardUsed = setCardUsed
+                                , commonState = commonState
+                                , fightArea = fightArea
+                                }
                     in
-                    ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+                    ( GameInProgress newGameState, Cmd.none )
 
                 Nothing ->
                     noOp
@@ -408,6 +410,46 @@ updateGameInProgress msg gameState =
 
         _ ->
             noOp
+
+
+type alias ResolveAbilityArg =
+    { ability : SpecialAbility
+    , setCardInUse : FightArea
+    , setCardUsed : FightArea
+    , commonState : CommonState
+    , fightArea : FightArea
+    }
+
+
+resolveAbility : ResolveAbilityArg -> GameState
+resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
+    case ability of
+        PlusOneLife ->
+            let
+                newLifePoints : LifePoints.Counter
+                newLifePoints =
+                    LifePoints.incrementCounter commonState.lifePoints
+
+                newCommonState : CommonState
+                newCommonState =
+                    { commonState | lifePoints = newLifePoints }
+
+                newFightArea : FightArea
+                newFightArea =
+                    setCardUsed
+            in
+            FightingHazard newCommonState newFightArea NormalFightView
+
+        SortThree ->
+            case drawCard commonState of
+                Nothing ->
+                    FightingHazard commonState fightArea NormalFightView
+
+                Just ( drawnCard, newCommonState ) ->
+                    FightingHazard newCommonState setCardInUse (SortView (SortArea.create drawnCard))
+
+        _ ->
+            Debug.todo "Implement missing ability"
 
 
 

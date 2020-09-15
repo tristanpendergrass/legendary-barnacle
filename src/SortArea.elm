@@ -1,4 +1,4 @@
-module SortArea exposing (ChangeOrderType, SortArea, SortIndex, attemptReveal, changeOrder, getCards, toggleDiscard)
+module SortArea exposing (ChangeOrderType, SortArea, SortIndex, attemptReveal, changeOrder, create, getCards, toggleDiscard)
 
 
 type SortArea a
@@ -35,6 +35,11 @@ type SortIndex
     = First
     | Second
     | Third
+
+
+create : a -> SortArea a
+create x =
+    OneRevealed x DiscardZeroOfOne
 
 
 getCards : SortArea a -> { cardsToKeep : List a, cardsToDiscard : List a }

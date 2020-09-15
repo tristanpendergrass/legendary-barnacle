@@ -1,4 +1,4 @@
-module HazardCard exposing (HazardCard, getFightingValue, getFreeCards, getGreenValue, getInitial, getRedValue, getYellowValue, hasAbility)
+module HazardCard exposing (HazardCard, getAbility, getFightingValue, getFreeCards, getGreenValue, getInitial, getRedValue, getYellowValue, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -148,6 +148,11 @@ hasAbility =
     getFightStats
         >> .specialAbility
         >> Maybe.Extra.isJust
+
+
+getAbility : HazardCard -> Maybe SpecialAbility
+getAbility =
+    getFightStats >> .specialAbility
 
 
 getFightingValue : HazardCard -> Int
