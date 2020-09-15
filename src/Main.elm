@@ -47,7 +47,7 @@ type OneOrTwo a
 
 type ResolvingState
     = PlayerWon HazardCard
-    | PlayerLost (List PlayerCard)
+    | PlayerLost Int (List PlayerCard)
 
 
 type FightView
@@ -65,16 +65,6 @@ type GameState
 type Model
     = GameInProgress GameState
     | GameOver
-
-
-discardOneOrTwo : OneOrTwo a -> Deck a -> Deck a
-discardOneOrTwo oneOrTwo deck =
-    case oneOrTwo of
-        One card ->
-            Deck.discard [ card ] deck
-
-        Two first second ->
-            Deck.discard [ first, second ] deck
 
 
 addTwoShuffleAndDraw : a -> a -> List a -> Random.Generator ( a, a, List a )
@@ -166,6 +156,10 @@ type Msg
     | SortChangeOrder SortArea.ChangeOrderType
     | SortDiscard SortArea.SortIndex
     | SortReveal
+      -- Resolving hazard
+    | AcceptWin
+    | ToggleLossDestroy Int
+    | AcceptLoss
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -180,12 +174,21 @@ update msg model =
 
 {-| Returns the game state to hazard selection with the phase updated, or moves to the final showdown if already in PhaseRed
 -}
-handlePhaseComplete : OneOrTwo HazardCard -> CommonState -> GameState
-handlePhaseComplete leftoverCards incompleteCommonState =
+handlePhaseComplete : Maybe HazardCard -> CommonState -> GameState
+handlePhaseComplete maybeHazardCard incompleteCommonState =
     let
+        leftoverCards : List HazardCard
+        leftoverCards =
+            case maybeHazardCard of
+                Just card ->
+                    [ card ]
+
+                Nothing ->
+                    []
+
         commonState : CommonState
         commonState =
-            { incompleteCommonState | hazardDeck = discardOneOrTwo leftoverCards incompleteCommonState.hazardDeck }
+            { incompleteCommonState | hazardDeck = Deck.discard leftoverCards incompleteCommonState.hazardDeck }
 
         toHazardSelection : Phase -> GameState
         toHazardSelection phase =
@@ -195,14 +198,15 @@ handlePhaseComplete leftoverCards incompleteCommonState =
 
                 drawTwiceResultAndSeed : ( Deck.DrawTwiceResult HazardCard, Random.Seed )
                 drawTwiceResultAndSeed =
-                    Random.step (Deck.drawTwice shuffledHazards) seedAfterReshuffle
+                    Random.step (Deck.drawTwiceWithReshuffle shuffledHazards) seedAfterReshuffle
 
                 ( drawTwiceResult, seedAfterDraw ) =
                     drawTwiceResultAndSeed
             in
             case drawTwiceResult of
                 Deck.NothingDrawn ->
-                    HazardSelection { commonState | phase = phase } leftoverCards
+                    -- Should never happen that all hazards run out, but if it does move directly to final showdown
+                    FinalShowdown { commonState | phase = PhaseRed }
 
                 Deck.DrewOne newHazardDeck hazardCard ->
                     HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = seedAfterDraw } (One hazardCard)
@@ -232,7 +236,7 @@ drawCard commonState =
         { playerDeck, seed } =
             commonState
     in
-    case Random.step (Deck.draw playerDeck) seed of
+    case Random.step (Deck.drawWithReshuffle playerDeck) seed of
         ( Nothing, _ ) ->
             Nothing
 
@@ -259,7 +263,7 @@ updateGameInProgress msg gameState =
             ( GameInProgress (toFightingHazard hazard commonState), Cmd.none )
 
         ( ChooseSkipHazard, HazardSelection commonState (One card) ) ->
-            ( GameInProgress (handlePhaseComplete (One card) commonState), Cmd.none )
+            ( GameInProgress (handlePhaseComplete (Just card) commonState), Cmd.none )
 
         -- Fight
         ( Draw, FightingHazard commonState fightArea NormalFightView ) ->
@@ -333,7 +337,7 @@ updateGameInProgress msg gameState =
 
                             resolvingState : ResolvingState
                             resolvingState =
-                                PlayerLost (FightArea.getCards fightArea)
+                                PlayerLost (hazardStrength - playerStrength) (FightArea.getCards fightArea)
                         in
                         ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
@@ -408,6 +412,25 @@ updateGameInProgress msg gameState =
                 _ ->
                     noOp
 
+        ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
+            let
+                newCommonState : CommonState
+                newCommonState =
+                    { commonState | playerDeck = Deck.discard [ PlayerCard.fromHazardCard hazardCard ] commonState.playerDeck }
+            in
+            case Deck.drawTwice commonState.hazardDeck of
+                Deck.NothingDrawn ->
+                    ( GameInProgress (handlePhaseComplete Nothing newCommonState), Cmd.none )
+
+                Deck.DrewOne newHazardDeck card ->
+                    ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (One card)), Cmd.none )
+
+                Deck.DrewTwo newHazardDeck first second ->
+                    ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (Two first second)), Cmd.none )
+
+        -- | AcceptWin
+        -- | ToggleLossDestroy Int
+        -- | AcceptLoss
         _ ->
             noOp
 

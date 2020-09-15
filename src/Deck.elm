@@ -1,4 +1,4 @@
-module Deck exposing (Deck, DrawTwiceResult(..), createDeck, discard, draw, drawTwice, putOnDrawPile, reshuffle)
+module Deck exposing (Deck, DrawTwiceResult(..), createDeck, discard, draw, drawTwice, drawTwiceWithReshuffle, drawWithReshuffle, putOnDrawPile, reshuffle)
 
 import Random
 import Random.List
@@ -28,8 +28,8 @@ shuffleNonEmptyList ( head, rest ) =
             )
 
 
-draw : Deck a -> Random.Generator (Maybe ( a, Deck a ))
-draw deck =
+drawWithReshuffle : Deck a -> Random.Generator (Maybe ( a, Deck a ))
+drawWithReshuffle deck =
     case deck of
         Deck [] [] ->
             Random.constant Nothing
@@ -44,6 +44,29 @@ draw deck =
                     (\( topShuffledDiscard, shuffledDiscard ) ->
                         Just ( topShuffledDiscard, Deck shuffledDiscard [] )
                     )
+
+
+draw : Deck a -> Maybe ( a, Deck a )
+draw deck =
+    case deck of
+        Deck [] _ ->
+            Nothing
+
+        Deck (drawnCard :: rest) discardPile ->
+            Just ( drawnCard, Deck rest discardPile )
+
+
+drawTwice : Deck a -> DrawTwiceResult a
+drawTwice deck =
+    case deck of
+        Deck [] _ ->
+            NothingDrawn
+
+        Deck [ first ] discardPile ->
+            DrewOne (Deck [] discardPile) first
+
+        Deck (first :: second :: rest) discardPile ->
+            DrewTwo (Deck rest discardPile) first second
 
 
 discard : List a -> Deck a -> Deck a
@@ -64,9 +87,9 @@ type DrawTwiceResult a
     | NothingDrawn
 
 
-drawTwice : Deck a -> Random.Generator (DrawTwiceResult a)
-drawTwice deck =
-    draw deck
+drawTwiceWithReshuffle : Deck a -> Random.Generator (DrawTwiceResult a)
+drawTwiceWithReshuffle deck =
+    drawWithReshuffle deck
         |> Random.andThen
             (\drawResult ->
                 case drawResult of
@@ -74,7 +97,7 @@ drawTwice deck =
                         Random.constant NothingDrawn
 
                     Just ( firstCard, deckWithOneDrawn ) ->
-                        draw deckWithOneDrawn
+                        drawWithReshuffle deckWithOneDrawn
                             |> Random.map
                                 (\secondDrawResult ->
                                     case secondDrawResult of

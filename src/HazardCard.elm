@@ -1,4 +1,4 @@
-module HazardCard exposing (HazardCard, getAbility, getFightingValue, getFreeCards, getGreenValue, getInitial, getRedValue, getYellowValue, hasAbility)
+module HazardCard exposing (HazardCard, getAbility, getDummy, getFightingValue, getFreeCards, getGreenValue, getInitial, getRedValue, getYellowValue, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -115,6 +115,11 @@ hazardCards =
 getInitial : ( HazardCard, HazardCard, List HazardCard )
 getInitial =
     ( food, food, hazardCards )
+
+
+getDummy : HazardCard
+getDummy =
+    food
 
 
 
