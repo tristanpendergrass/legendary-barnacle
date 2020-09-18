@@ -1,4 +1,4 @@
-module SelectionList exposing (SelectionList, create, getOnToggle)
+module SelectionList exposing (SelectionList, attemptToggle, create, getUnselected)
 
 import List.Extra
 
@@ -53,8 +53,8 @@ toggle =
     Tuple.mapFirst not
 
 
-getOnToggle : Int -> SelectionList a -> Maybe (SelectionList a)
-getOnToggle index (SelectionList limit list) =
+attemptToggle : Int -> SelectionList a -> Maybe (SelectionList a)
+attemptToggle index (SelectionList limit list) =
     let
         limitReached : Bool
         limitReached =
@@ -70,3 +70,10 @@ getOnToggle index (SelectionList limit list) =
                     Just (toggle selectionTuple)
             )
         |> Maybe.map (SelectionList limit)
+
+
+getUnselected : SelectionList a -> List a
+getUnselected (SelectionList _ list) =
+    list
+        |> List.filter (Tuple.first >> not)
+        |> List.map Tuple.second

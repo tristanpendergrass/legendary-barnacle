@@ -440,14 +440,29 @@ updateGameInProgress msg gameState =
                     ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (Two first second)), Cmd.none )
 
         ( ToggleLossDestroy index, ResolvingFight commonState (PlayerLost lifeLost selectionList) ) ->
-            case SelectionList.getOnToggle index selectionList of
+            case SelectionList.attemptToggle index selectionList of
                 Nothing ->
                     noOp
 
                 Just newSelectionList ->
                     ( GameInProgress (ResolvingFight commonState (PlayerLost lifeLost newSelectionList)), Cmd.none )
 
-        -- | AcceptLoss
+        ( AcceptLoss, ResolvingFight commonState (PlayerLost _ selectionList) ) ->
+            let
+                newCommonState : CommonState
+                newCommonState =
+                    { commonState | playerDeck = Deck.discard (SelectionList.getUnselected selectionList) commonState.playerDeck }
+            in
+            case Deck.drawTwice commonState.hazardDeck of
+                Deck.NothingDrawn ->
+                    ( GameInProgress (handlePhaseComplete Nothing newCommonState), Cmd.none )
+
+                Deck.DrewOne newHazardDeck card ->
+                    ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (One card)), Cmd.none )
+
+                Deck.DrewTwo newHazardDeck first second ->
+                    ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (Two first second)), Cmd.none )
+
         _ ->
             noOp
 
