@@ -16,6 +16,7 @@ import PlayerCard exposing (PlayerCard)
 import Random
 import Random.List
 import RobinsonCard exposing (RobinsonCard)
+import SelectionList exposing (SelectionList)
 import SortArea exposing (SortArea)
 
 
@@ -47,7 +48,7 @@ type OneOrTwo a
 
 type ResolvingState
     = PlayerWon HazardCard
-    | PlayerLost Int (List PlayerCard)
+    | PlayerLost Int (SelectionList PlayerCard)
 
 
 type FightView
@@ -296,9 +297,13 @@ updateGameInProgress msg gameState =
                 hazardStrength =
                     FightArea.getHazardStrength phase fightArea
 
+                strengthDifference : Int
+                strengthDifference =
+                    hazardStrength - playerStrength
+
                 playerWon : Bool
                 playerWon =
-                    playerStrength >= hazardStrength
+                    strengthDifference <= 0
             in
             if playerWon then
                 let
@@ -321,7 +326,8 @@ updateGameInProgress msg gameState =
                 ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
             else
-                case LifePoints.decrementCounter (hazardStrength - playerStrength) commonState.lifePoints of
+                -- Player lost, strengthDifference > 0
+                case LifePoints.decrementCounter strengthDifference commonState.lifePoints of
                     Nothing ->
                         ( GameOver, Cmd.none )
 
@@ -335,9 +341,14 @@ updateGameInProgress msg gameState =
                             newCommonState =
                                 { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
 
+                            playerCardList : SelectionList PlayerCard
+                            playerCardList =
+                                FightArea.getCards fightArea
+                                    |> SelectionList.create strengthDifference
+
                             resolvingState : ResolvingState
                             resolvingState =
-                                PlayerLost (hazardStrength - playerStrength) (FightArea.getCards fightArea)
+                                PlayerLost strengthDifference playerCardList
                         in
                         ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
@@ -428,8 +439,14 @@ updateGameInProgress msg gameState =
                 Deck.DrewTwo newHazardDeck first second ->
                     ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (Two first second)), Cmd.none )
 
-        -- | AcceptWin
-        -- | ToggleLossDestroy Int
+        ( ToggleLossDestroy index, ResolvingFight commonState (PlayerLost lifeLost selectionList) ) ->
+            case SelectionList.getOnToggle index selectionList of
+                Nothing ->
+                    noOp
+
+                Just newSelectionList ->
+                    ( GameInProgress (ResolvingFight commonState (PlayerLost lifeLost newSelectionList)), Cmd.none )
+
         -- | AcceptLoss
         _ ->
             noOp
