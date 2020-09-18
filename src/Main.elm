@@ -234,15 +234,19 @@ toFightingHazard hazard commonState =
 drawCard : CommonState -> Maybe ( PlayerCard, CommonState )
 drawCard commonState =
     let
-        { playerDeck, seed } =
+        { playerDeck, seed, agingCards } =
             commonState
+
+        agingCardsAsPlayerCards : List PlayerCard
+        agingCardsAsPlayerCards =
+            List.map PlayerCard.fromAgingCard agingCards
     in
-    case Random.step (Deck.drawWithReshuffle playerDeck) seed of
+    case Random.step (Deck.drawWithReshuffle playerDeck agingCardsAsPlayerCards) seed of
         ( Nothing, _ ) ->
             Nothing
 
-        ( Just ( drawnCard, newPlayerDeck ), newSeed ) ->
-            Just ( drawnCard, { commonState | playerDeck = newPlayerDeck, seed = newSeed } )
+        ( Just ( drawnCard, newPlayerDeck, newAgingCards ), newSeed ) ->
+            Just ( drawnCard, { commonState | playerDeck = newPlayerDeck, seed = newSeed, agingCards = newAgingCards } )
 
 
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )

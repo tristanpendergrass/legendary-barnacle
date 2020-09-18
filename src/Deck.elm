@@ -28,21 +28,29 @@ shuffleNonEmptyList ( head, rest ) =
             )
 
 
-drawWithReshuffle : Deck a -> Random.Generator (Maybe ( a, Deck a ))
-drawWithReshuffle deck =
-    case deck of
-        Deck [] [] ->
+drawWithReshuffle : Deck a -> List a -> Random.Generator (Maybe ( a, Deck a, List a ))
+drawWithReshuffle deck cardsToAdd =
+    case ( deck, cardsToAdd ) of
+        ( Deck [] [], _ ) ->
             Random.constant Nothing
 
-        Deck (topDraw :: rest) discardPile ->
-            Random.constant (Just ( topDraw, Deck rest discardPile ))
+        ( Deck (topDraw :: rest) discardPile, _ ) ->
+            Random.constant (Just ( topDraw, Deck rest discardPile, cardsToAdd ))
 
-        Deck [] (topDiscard :: rest) ->
+        ( Deck [] (topDiscard :: rest), [] ) ->
             ( topDiscard, rest )
                 |> shuffleNonEmptyList
                 |> Random.map
                     (\( topShuffledDiscard, shuffledDiscard ) ->
-                        Just ( topShuffledDiscard, Deck shuffledDiscard [] )
+                        Just ( topShuffledDiscard, Deck shuffledDiscard [], cardsToAdd )
+                    )
+
+        ( Deck [] (topDiscard :: rest), cardToAdd :: restCardsToAdd ) ->
+            ( cardToAdd, topDiscard :: rest )
+                |> shuffleNonEmptyList
+                |> Random.map
+                    (\( topShuffledDiscard, shuffledDiscard ) ->
+                        Just ( topShuffledDiscard, Deck shuffledDiscard [], restCardsToAdd )
                     )
 
 
