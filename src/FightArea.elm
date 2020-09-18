@@ -4,8 +4,7 @@ module FightArea exposing
     , createFightArea
     , getCard
     , getCards
-    , getHazard
-    , getHazardStrength
+    , getEnemy
     , getPlayerStrength
     , playCard
     , setCardUsed
@@ -13,7 +12,6 @@ module FightArea exposing
     )
 
 import FightStats exposing (SpecialAbility)
-import HazardCard exposing (HazardCard)
 import List.Extra
 import Phase exposing (Phase(..))
 import PlayerCard exposing (PlayerCard)
@@ -30,18 +28,18 @@ type PlayedCard
     | AbilityCard PlayerCard UsedState
 
 
-type FightArea
-    = FightArea HazardCard (List PlayedCard)
+type FightArea a
+    = FightArea a (List PlayedCard)
 
 
-getPlayedCards : FightArea -> List PlayedCard
+getPlayedCards : FightArea a -> List PlayedCard
 getPlayedCards (FightArea _ cards) =
     cards
 
 
-getHazard : FightArea -> HazardCard
-getHazard (FightArea hazard _) =
-    hazard
+getEnemy : FightArea a -> a
+getEnemy (FightArea enemy _) =
+    enemy
 
 
 toPlayedCard : PlayerCard -> PlayedCard
@@ -63,24 +61,14 @@ fromPlayedCard playedCard =
             card
 
 
-playedCardCanBeUsed : PlayedCard -> Bool
-playedCardCanBeUsed playedCard =
-    case playedCard of
-        AbilityCard _ NotUsed ->
-            True
-
-        _ ->
-            False
+createFightArea : a -> FightArea a
+createFightArea enemy =
+    FightArea enemy []
 
 
-createFightArea : HazardCard -> FightArea
-createFightArea hazardCard =
-    FightArea hazardCard []
-
-
-playCard : PlayerCard -> FightArea -> FightArea
-playCard card (FightArea hazardCard cards) =
-    FightArea hazardCard (toPlayedCard card :: cards)
+playCard : PlayerCard -> FightArea a -> FightArea a
+playCard card (FightArea enemy cards) =
+    FightArea enemy (toPlayedCard card :: cards)
 
 
 getPlayedCardStrength : PlayedCard -> Int
@@ -90,25 +78,12 @@ getPlayedCardStrength playedCard =
         |> PlayerCard.getFightingValue
 
 
-getPlayerStrength : FightArea -> Int
+getPlayerStrength : FightArea a -> Int
 getPlayerStrength =
     getPlayedCards >> List.map getPlayedCardStrength >> List.foldl (+) 0
 
 
-getHazardStrength : Phase -> FightArea -> Int
-getHazardStrength phase (FightArea hazard _) =
-    case phase of
-        PhaseGreen ->
-            HazardCard.getGreenValue hazard
-
-        PhaseYellow ->
-            HazardCard.getYellowValue hazard
-
-        PhaseRed ->
-            HazardCard.getRedValue hazard
-
-
-getCard : Int -> FightArea -> Maybe PlayerCard
+getCard : Int -> FightArea a -> Maybe PlayerCard
 getCard index fightArea =
     fightArea
         |> getPlayedCards
@@ -116,8 +91,8 @@ getCard index fightArea =
         |> Maybe.map fromPlayedCard
 
 
-setCardUsed : Int -> FightArea -> FightArea
-setCardUsed index (FightArea hazard cards) =
+setCardUsed : Int -> FightArea a -> FightArea a
+setCardUsed index (FightArea enemy cards) =
     let
         useCard : PlayedCard -> PlayedCard
         useCard playedCard =
@@ -137,7 +112,7 @@ setCardUsed index (FightArea hazard cards) =
                 playedCard
     in
     FightArea
-        hazard
+        enemy
         (List.indexedMap (setUsedIfIndexMatches index) cards)
 
 
@@ -162,22 +137,22 @@ getCardWithUnusedAbility playedCard =
             Nothing
 
 
-attemptUse : Int -> FightArea -> Maybe ( SpecialAbility, { setCardInUse : FightArea, setCardUsed : FightArea } )
-attemptUse index (FightArea hazardCard playedCards) =
+attemptUse : Int -> FightArea a -> Maybe ( SpecialAbility, { setCardInUse : FightArea a, setCardUsed : FightArea a } )
+attemptUse index (FightArea enemy playedCards) =
     List.Extra.getAt index playedCards
         |> Maybe.andThen getCardWithUnusedAbility
         |> Maybe.map
             (\( playerCard, ability ) ->
                 ( ability
-                , { setCardInUse = FightArea hazardCard (replaceAtIndex index (AbilityCard playerCard InUse) playedCards)
-                  , setCardUsed = FightArea hazardCard (replaceAtIndex index (AbilityCard playerCard Used) playedCards)
+                , { setCardInUse = FightArea enemy (replaceAtIndex index (AbilityCard playerCard InUse) playedCards)
+                  , setCardUsed = FightArea enemy (replaceAtIndex index (AbilityCard playerCard Used) playedCards)
                   }
                 )
             )
 
 
-setInUseToUsed : FightArea -> FightArea
-setInUseToUsed (FightArea hazard cards) =
+setInUseToUsed : FightArea a -> FightArea a
+setInUseToUsed (FightArea enemy cards) =
     let
         setInUseCardToUsed : PlayedCard -> PlayedCard
         setInUseCardToUsed playedCard =
@@ -189,10 +164,10 @@ setInUseToUsed (FightArea hazard cards) =
                     playedCard
     in
     FightArea
-        hazard
+        enemy
         (List.map setInUseCardToUsed cards)
 
 
-getCards : FightArea -> List PlayerCard
+getCards : FightArea a -> List PlayerCard
 getCards =
     getPlayedCards >> List.map fromPlayedCard

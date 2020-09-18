@@ -163,6 +163,10 @@ type Msg
     | AcceptLoss
 
 
+
+-- Final Showdown
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case model of
@@ -295,11 +299,19 @@ updateGameInProgress msg gameState =
 
                 hazard : HazardCard
                 hazard =
-                    FightArea.getHazard fightArea
+                    FightArea.getEnemy fightArea
 
                 hazardStrength : Int
                 hazardStrength =
-                    FightArea.getHazardStrength phase fightArea
+                    case phase of
+                        PhaseGreen ->
+                            HazardCard.getGreenValue hazard
+
+                        PhaseYellow ->
+                            HazardCard.getYellowValue hazard
+
+                        PhaseRed ->
+                            HazardCard.getRedValue hazard
 
                 strengthDifference : Int
                 strengthDifference =
