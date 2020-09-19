@@ -34,11 +34,16 @@ type alias CommonState =
     { seed : Random.Seed
     , lifePoints : LifePoints.Counter
     , phase : Phase
-    , leftPirate : PirateCard
-    , rightPirate : PirateCard
+    , pirateOne : PirateCard
+    , pirateTwo : PirateCard
     , hazardDeck : HazardDeck
     , playerDeck : PlayerDeck
     }
+
+
+type PirateState
+    = FirstPirate
+    | SecondPirate
 
 
 type OneOrTwo a
@@ -60,7 +65,7 @@ type GameState
     = HazardSelection CommonState (OneOrTwo HazardCard)
     | FightingHazard CommonState (FightArea HazardCard) FightView
     | ResolvingFight CommonState ResolvingState
-    | FinalShowdown CommonState
+    | FinalShowdown CommonState PirateState (FightArea PirateCard) FightView
 
 
 type Model
@@ -113,7 +118,7 @@ init _ =
         hazardDeck =
             HazardDeck.create hazardCards
 
-        ( ( leftPirate, rightPirate ), seedAfterPirateShuffle ) =
+        ( ( pirateOne, pirateTwo ), seedAfterPirateShuffle ) =
             Random.step PirateCard.getTwoPirates seedAfterHazardShuffle
 
         commonState : CommonState
@@ -121,8 +126,8 @@ init _ =
             { seed = seedAfterPirateShuffle
             , lifePoints = LifePoints.createCounter 20
             , phase = PhaseGreen
-            , leftPirate = leftPirate
-            , rightPirate = rightPirate
+            , pirateOne = pirateOne
+            , pirateTwo = pirateTwo
             , playerDeck = playerDeck
             , hazardDeck = hazardDeck
             }
@@ -175,6 +180,15 @@ update msg model =
             ( model, Cmd.none )
 
 
+toFinalShowdown : CommonState -> GameState
+toFinalShowdown commonState =
+    FinalShowdown
+        commonState
+        FirstPirate
+        (FightArea.createFightArea commonState.pirateOne)
+        NormalFightView
+
+
 {-| Returns the game state to hazard selection with the phase updated, or moves to the final showdown if already in PhaseRed
 -}
 handlePhaseComplete : Maybe HazardCard -> CommonState -> GameState
@@ -207,7 +221,7 @@ handlePhaseComplete maybeHazardCard incompleteCommonState =
             case drawTwiceResult of
                 HazardDeck.NothingDrawn ->
                     -- Should never happen that all hazards run out, but if it does move directly to final showdown
-                    FinalShowdown { commonState | phase = PhaseRed }
+                    toFinalShowdown { commonState | phase = PhaseRed }
 
                 HazardDeck.DrewOne newHazardDeck hazardCard ->
                     HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = newSeed } (One hazardCard)
@@ -217,7 +231,7 @@ handlePhaseComplete maybeHazardCard incompleteCommonState =
     in
     case commonState.phase of
         PhaseRed ->
-            FinalShowdown commonState
+            toFinalShowdown { commonState | phase = PhaseRed }
 
         PhaseYellow ->
             toHazardSelection PhaseRed
