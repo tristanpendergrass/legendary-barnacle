@@ -381,7 +381,7 @@ updateGameInProgress msg gameState =
                         ( ability, { setCardInUse, setCardUsed } ) =
                             attemptUseResult
 
-                        newGameState =
+                        ( newCommonState, newFightArea, newFightView ) =
                             resolveAbility
                                 { ability = ability
                                 , setCardInUse = setCardInUse
@@ -390,7 +390,28 @@ updateGameInProgress msg gameState =
                                 , fightArea = fightArea
                                 }
                     in
-                    ( GameInProgress newGameState, Cmd.none )
+                    ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+
+                Nothing ->
+                    noOp
+
+        ( UseAbility index, FinalShowdown commonState pirateState fightArea NormalFightView ) ->
+            case FightArea.attemptUse index fightArea of
+                Just attemptUseResult ->
+                    let
+                        ( ability, { setCardInUse, setCardUsed } ) =
+                            attemptUseResult
+
+                        ( newCommonState, newFightArea, newFightView ) =
+                            resolveAbility
+                                { ability = ability
+                                , setCardInUse = setCardInUse
+                                , setCardUsed = setCardUsed
+                                , commonState = commonState
+                                , fightArea = fightArea
+                                }
+                    in
+                    ( GameInProgress (FinalShowdown newCommonState pirateState newFightArea newFightView), Cmd.none )
 
                 Nothing ->
                     noOp
@@ -499,7 +520,7 @@ type alias ResolveAbilityArg a =
     }
 
 
-resolveAbility : ResolveAbilityArg HazardCard -> GameState
+resolveAbility : ResolveAbilityArg a -> ( CommonState, FightArea a, FightView )
 resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
     case ability of
         PlusOneLife ->
@@ -512,19 +533,19 @@ resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
                 newCommonState =
                     { commonState | lifePoints = newLifePoints }
 
-                newFightArea : FightArea HazardCard
+                newFightArea : FightArea a
                 newFightArea =
                     setCardUsed
             in
-            FightingHazard newCommonState newFightArea NormalFightView
+            ( newCommonState, newFightArea, NormalFightView )
 
         SortThree ->
             case drawCard commonState of
                 Nothing ->
-                    FightingHazard commonState fightArea NormalFightView
+                    ( commonState, fightArea, NormalFightView )
 
                 Just ( drawnCard, newCommonState ) ->
-                    FightingHazard newCommonState setCardInUse (SortView (SortArea.create drawnCard))
+                    ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
         _ ->
             Debug.todo "Implement missing ability"
