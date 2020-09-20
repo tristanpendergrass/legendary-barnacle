@@ -438,6 +438,27 @@ updateGameInProgress msg gameState =
             in
             ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
+        ( SortFinish, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+            let
+                { cardsToKeep, cardsToDiscard } =
+                    SortArea.getCards sortArea
+
+                newPlayerDeck : PlayerDeck
+                newPlayerDeck =
+                    commonState.playerDeck
+                        |> PlayerDeck.putOnTop cardsToKeep
+                        |> PlayerDeck.discard cardsToDiscard
+
+                newCommonState : CommonState
+                newCommonState =
+                    { commonState | playerDeck = newPlayerDeck }
+
+                newFightArea : FightArea PirateCard
+                newFightArea =
+                    FightArea.setInUseToUsed fightArea
+            in
+            ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
+
         ( SortChangeOrder changeOrderType, FightingHazard commonState fightArea (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
@@ -446,6 +467,14 @@ updateGameInProgress msg gameState =
             in
             ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
 
+        ( SortChangeOrder changeOrderType, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+            let
+                newSortArea : SortArea PlayerCard
+                newSortArea =
+                    SortArea.changeOrder changeOrderType sortArea
+            in
+            ( GameInProgress (FinalShowdown commonState fightArea (SortView newSortArea)), Cmd.none )
+
         ( SortDiscard discardType, FightingHazard commonState fightArea (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
@@ -453,6 +482,14 @@ updateGameInProgress msg gameState =
                     SortArea.toggleDiscard discardType sortArea
             in
             ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
+
+        ( SortDiscard discardType, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+            let
+                newSortArea : SortArea PlayerCard
+                newSortArea =
+                    SortArea.toggleDiscard discardType sortArea
+            in
+            ( GameInProgress (FinalShowdown commonState fightArea (SortView newSortArea)), Cmd.none )
 
         ( SortReveal, FightingHazard commonState fightArea (SortView sortArea) ) ->
             case ( SortArea.attemptReveal sortArea, drawCard commonState ) of
@@ -463,6 +500,19 @@ updateGameInProgress msg gameState =
                             onReveal drawnCard
                     in
                     ( GameInProgress (FightingHazard newCommonState fightArea (SortView newSortArea)), Cmd.none )
+
+                _ ->
+                    noOp
+
+        ( SortReveal, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+            case ( SortArea.attemptReveal sortArea, drawCard commonState ) of
+                ( Just onReveal, Just ( drawnCard, newCommonState ) ) ->
+                    let
+                        newSortArea : SortArea PlayerCard
+                        newSortArea =
+                            onReveal drawnCard
+                    in
+                    ( GameInProgress (FinalShowdown newCommonState fightArea (SortView newSortArea)), Cmd.none )
 
                 _ ->
                     noOp
