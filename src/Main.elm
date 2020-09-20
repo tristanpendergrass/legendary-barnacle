@@ -36,14 +36,15 @@ type alias CommonState =
     , phase : Phase
     , pirateOne : PirateCard
     , pirateTwo : PirateCard
+    , pirateStatus : PirateStatus
     , hazardDeck : HazardDeck
     , playerDeck : PlayerDeck
     }
 
 
-type PirateState
-    = FirstPirate
-    | SecondPirate
+type PirateStatus
+    = BothPiratesAlive
+    | OnePirateDefeated
 
 
 type OneOrTwo a
@@ -65,7 +66,7 @@ type GameState
     = HazardSelection CommonState (OneOrTwo HazardCard)
     | FightingHazard CommonState (FightArea HazardCard) FightView
     | ResolvingFight CommonState ResolvingState
-    | FinalShowdown CommonState PirateState (FightArea PirateCard) FightView
+    | FinalShowdown CommonState (FightArea PirateCard) FightView
 
 
 type Model
@@ -128,6 +129,7 @@ init _ =
             , phase = PhaseGreen
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
+            , pirateStatus = BothPiratesAlive
             , playerDeck = playerDeck
             , hazardDeck = hazardDeck
             }
@@ -184,7 +186,6 @@ toFinalShowdown : CommonState -> GameState
 toFinalShowdown commonState =
     FinalShowdown
         commonState
-        FirstPirate
         (FightArea.createFightArea commonState.pirateOne)
         NormalFightView
 
@@ -395,7 +396,7 @@ updateGameInProgress msg gameState =
                 Nothing ->
                     noOp
 
-        ( UseAbility index, FinalShowdown commonState pirateState fightArea NormalFightView ) ->
+        ( UseAbility index, FinalShowdown commonState fightArea NormalFightView ) ->
             case FightArea.attemptUse index fightArea of
                 Just attemptUseResult ->
                     let
@@ -411,7 +412,7 @@ updateGameInProgress msg gameState =
                                 , fightArea = fightArea
                                 }
                     in
-                    ( GameInProgress (FinalShowdown newCommonState pirateState newFightArea newFightView), Cmd.none )
+                    ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
 
                 Nothing ->
                     noOp
