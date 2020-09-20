@@ -9,6 +9,7 @@ module FightArea exposing
     , playCard
     , setCardUsed
     , setInUseToUsed
+    , undoAllInUse
     )
 
 import FightStats exposing (SpecialAbility)
@@ -91,6 +92,16 @@ getCard index fightArea =
         |> Maybe.map fromPlayedCard
 
 
+isInUse : PlayedCard -> Bool
+isInUse playedCard =
+    case playedCard of
+        AbilityCard _ InUse ->
+            True
+
+        _ ->
+            False
+
+
 setCardUsed : Int -> FightArea a -> FightArea a
 setCardUsed index (FightArea enemy cards) =
     let
@@ -105,7 +116,8 @@ setCardUsed index (FightArea enemy cards) =
 
         setUsedIfIndexMatches : Int -> Int -> PlayedCard -> PlayedCard
         setUsedIfIndexMatches passedIndex i playedCard =
-            if i == passedIndex then
+            -- Notice the `isInUse playedCard` here to resolve any *other* inUse cards that happen to be in the fight area. This would happen with Copy, I'm not sure of any other scenario.
+            if i == passedIndex || isInUse playedCard then
                 useCard playedCard
 
             else
@@ -171,3 +183,20 @@ setInUseToUsed (FightArea enemy cards) =
 getCards : FightArea a -> List PlayerCard
 getCards =
     getPlayedCards >> List.map fromPlayedCard
+
+
+undoAllInUse : FightArea a -> FightArea a
+undoAllInUse (FightArea enemy cards) =
+    let
+        setInUseCardToUnused : PlayedCard -> PlayedCard
+        setInUseCardToUnused card =
+            case card of
+                AbilityCard abilityCard InUse ->
+                    AbilityCard abilityCard NotUsed
+
+                _ ->
+                    card
+    in
+    cards
+        |> List.map setInUseCardToUnused
+        |> FightArea enemy

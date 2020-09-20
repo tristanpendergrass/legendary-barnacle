@@ -60,6 +60,7 @@ type ResolvingState
 type FightView
     = NormalFightView
     | SortView (SortArea PlayerCard)
+    | SelectCopyView
 
 
 type GameState
@@ -162,6 +163,9 @@ type Msg
     | SortChangeOrder SortArea.ChangeOrderType
     | SortDiscard SortArea.SortIndex
     | SortReveal
+      -- case FightView of SelectCopyView
+    | SelectCopy Int
+    | CancelCopy
       -- Resolving hazard
     | AcceptWin
     | ToggleLossDestroy Int
@@ -517,6 +521,30 @@ updateGameInProgress msg gameState =
                 _ ->
                     noOp
 
+        ( SelectCopy index, FightingHazard commonState fightArea SelectCopyView ) ->
+            case FightArea.attemptUse index fightArea of
+                Just attemptUseResult ->
+                    let
+                        ( ability, _ ) =
+                            attemptUseResult
+
+                        ( newCommonState, newFightArea, newFightView ) =
+                            resolveAbility
+                                { ability = ability
+                                , setCardInUse = fightArea
+                                , setCardUsed = fightArea
+                                , commonState = commonState
+                                , fightArea = fightArea
+                                }
+                    in
+                    ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+
+                Nothing ->
+                    noOp
+
+        ( CancelCopy, FightingHazard commonState fightArea SelectCopyView ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
+
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
                 newCommonState : CommonState
@@ -597,6 +625,9 @@ resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
 
                 Just ( drawnCard, newCommonState ) ->
                     ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
+
+        Copy ->
+            ( commonState, setCardInUse, SelectCopyView )
 
         _ ->
             Debug.todo "Implement missing ability"
