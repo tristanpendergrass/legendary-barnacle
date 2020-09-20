@@ -542,8 +542,32 @@ updateGameInProgress msg gameState =
                 Nothing ->
                     noOp
 
+        ( SelectCopy index, FinalShowdown commonState fightArea SelectCopyView ) ->
+            case FightArea.attemptUse index fightArea of
+                Just attemptUseResult ->
+                    let
+                        ( ability, _ ) =
+                            attemptUseResult
+
+                        ( newCommonState, newFightArea, newFightView ) =
+                            resolveAbility
+                                { ability = ability
+                                , setCardInUse = fightArea
+                                , setCardUsed = fightArea
+                                , commonState = commonState
+                                , fightArea = fightArea
+                                }
+                    in
+                    ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+
+                Nothing ->
+                    noOp
+
         ( CancelCopy, FightingHazard commonState fightArea SelectCopyView ) ->
             ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
+
+        ( CancelCopy, FinalShowdown commonState fightArea SelectCopyView ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
