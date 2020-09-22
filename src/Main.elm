@@ -379,6 +379,60 @@ updateGameInProgress msg gameState =
                         in
                         ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
+        ( EndFight, FinalShowdown commonState fightArea NormalFightView ) ->
+            let
+                { playerDeck, pirateStatus } =
+                    commonState
+
+                playerStrength : Int
+                playerStrength =
+                    FightArea.getPlayerStrength fightArea
+
+                pirate : PirateCard
+                pirate =
+                    FightArea.getEnemy fightArea
+
+                pirateStrength : Int
+                pirateStrength =
+                    PirateCard.getStrength pirate
+
+                strengthDifference : Int
+                strengthDifference =
+                    pirateStrength - playerStrength
+
+                playerWon : Bool
+                playerWon =
+                    strengthDifference <= 0
+            in
+            if playerWon then
+                case pirateStatus of
+                    BothPiratesAlive ->
+                        let
+                            discardedCards : List PlayerCard
+                            discardedCards =
+                                FightArea.getCards fightArea
+
+                            newPlayerDeck : PlayerDeck
+                            newPlayerDeck =
+                                PlayerDeck.discard discardedCards playerDeck
+
+                            newCommonState : CommonState
+                            newCommonState =
+                                { commonState | playerDeck = newPlayerDeck, pirateStatus = OnePirateDefeated }
+
+                            newGameState : GameState
+                            newGameState =
+                                FinalShowdown newCommonState (FightArea.createFightArea commonState.pirateTwo) NormalFightView
+                        in
+                        ( GameInProgress newGameState, Cmd.none )
+
+                    OnePirateDefeated ->
+                        ( GameOver, Cmd.none )
+
+            else
+                -- Player isn't allowed to surrender the final showdown
+                noOp
+
         ( UseAbility index, FightingHazard commonState fightArea NormalFightView ) ->
             case FightArea.attemptUse index fightArea of
                 Just attemptUseResult ->

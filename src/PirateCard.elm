@@ -1,4 +1,4 @@
-module PirateCard exposing (PirateCard, getTwoPirates)
+module PirateCard exposing (PirateCard, getStrength, getTwoPirates)
 
 import Random
 import Random.List
@@ -6,29 +6,40 @@ import Random.List
 
 type PirateCard
     = Normal { hazardValue : Int, freeCards : Int }
-    | DrawCostsLife
-    | HalfCardsAreNull
-    | CardsGetPlusOneValue
-    | FightAllRemainingHazards
-    | PlusTwoHazardPointsPerAgingCard
 
 
 
+-- | DrawCostsLife
+-- | HalfCardsAreNull
+-- | CardsGetPlusOneValue
+-- | FightAllRemainingHazards
+-- | PlusTwoHazardPointsPerAgingCard
 -- Pirate Card Data
+
+
+normal1 : PirateCard
+normal1 =
+    Normal { hazardValue = 8, freeCards = 30 }
+
+
+normal2 : PirateCard
+normal2 =
+    Normal { hazardValue = 9, freeCards = 35 }
 
 
 pirateCards : List PirateCard
 pirateCards =
-    [ Normal { hazardValue = 8, freeCards = 30 }
-    , Normal { hazardValue = 9, freeCards = 35 }
+    [ normal1
+    , normal2
     , Normal { hazardValue = 20, freeCards = 6 }
     , Normal { hazardValue = 25, freeCards = 7 }
     , Normal { hazardValue = 40, freeCards = 10 }
-    , DrawCostsLife
-    , PlusTwoHazardPointsPerAgingCard
-    , CardsGetPlusOneValue
-    , HalfCardsAreNull
-    , FightAllRemainingHazards
+
+    -- , DrawCostsLife
+    -- , PlusTwoHazardPointsPerAgingCard
+    -- , CardsGetPlusOneValue
+    -- , HalfCardsAreNull
+    -- , FightAllRemainingHazards
     ]
 
 
@@ -44,5 +55,12 @@ getTwoPirates =
 
                     _ ->
                         -- should never reach this condition, return two arbitrarily chosen cards
-                        ( DrawCostsLife, PlusTwoHazardPointsPerAgingCard )
+                        ( normal1, normal2 )
             )
+
+
+getStrength : PirateCard -> Int
+getStrength pirateCard =
+    case pirateCard of
+        Normal { hazardValue } ->
+            hazardValue
