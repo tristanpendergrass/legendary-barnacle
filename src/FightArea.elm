@@ -1,5 +1,6 @@
 module FightArea exposing
     ( FightArea
+    , attemptDouble
     , attemptUse
     , createFightArea
     , getCard
@@ -25,8 +26,8 @@ type UsedState
 
 
 type PlayedCard
-    = NormalCard PlayerCard
-    | AbilityCard PlayerCard UsedState
+    = NormalCard PlayerCard Bool
+    | AbilityCard PlayerCard UsedState Bool
 
 
 type FightArea a
@@ -46,19 +47,19 @@ getEnemy (FightArea enemy _) =
 toPlayedCard : PlayerCard -> PlayedCard
 toPlayedCard card =
     if PlayerCard.hasAbility card then
-        AbilityCard card NotUsed
+        AbilityCard card NotUsed False
 
     else
-        NormalCard card
+        NormalCard card False
 
 
 fromPlayedCard : PlayedCard -> PlayerCard
 fromPlayedCard playedCard =
     case playedCard of
-        AbilityCard card _ ->
+        AbilityCard card _ _ ->
             card
 
-        NormalCard card ->
+        NormalCard card _ ->
             card
 
 
@@ -74,9 +75,25 @@ playCard card (FightArea enemy cards) =
 
 getPlayedCardStrength : PlayedCard -> Int
 getPlayedCardStrength playedCard =
-    playedCard
-        |> fromPlayedCard
-        |> PlayerCard.getFightingValue
+    let
+        strength : Int
+        strength =
+            playedCard
+                |> fromPlayedCard
+                |> PlayerCard.getFightingValue
+    in
+    case playedCard of
+        AbilityCard _ _ False ->
+            strength
+
+        AbilityCard _ _ True ->
+            strength * 2
+
+        NormalCard _ False ->
+            strength
+
+        NormalCard _ True ->
+            strength * 2
 
 
 getPlayerStrength : FightArea a -> Int
@@ -95,7 +112,7 @@ getCard index fightArea =
 isInUse : PlayedCard -> Bool
 isInUse playedCard =
     case playedCard of
-        AbilityCard _ InUse ->
+        AbilityCard _ InUse _ ->
             True
 
         _ ->
@@ -108,11 +125,11 @@ setCardUsed index (FightArea enemy cards) =
         useCard : PlayedCard -> PlayedCard
         useCard playedCard =
             case playedCard of
-                NormalCard _ ->
+                NormalCard _ _ ->
                     playedCard
 
-                AbilityCard card _ ->
-                    AbilityCard card Used
+                AbilityCard card _ isDoubled ->
+                    AbilityCard card Used isDoubled
 
         setUsedIfIndexMatches : Int -> Int -> PlayedCard -> PlayedCard
         setUsedIfIndexMatches passedIndex i playedCard =
@@ -137,16 +154,36 @@ replaceAtIndex index x xs =
         ]
 
 
-getCardWithUnusedAbility : PlayedCard -> Maybe ( PlayerCard, SpecialAbility )
+getCardWithUnusedAbility : PlayedCard -> Maybe ( PlayedCard, SpecialAbility )
 getCardWithUnusedAbility playedCard =
     case playedCard of
-        AbilityCard playerCard NotUsed ->
+        AbilityCard playerCard NotUsed _ ->
             playerCard
                 |> PlayerCard.getAbility
-                |> Maybe.map (Tuple.pair playerCard)
+                |> Maybe.map (\ability -> ( playedCard, ability ))
 
         _ ->
             Nothing
+
+
+setInUse : PlayedCard -> PlayedCard
+setInUse card =
+    case card of
+        AbilityCard playerCard _ isDoubled ->
+            AbilityCard playerCard InUse isDoubled
+
+        NormalCard _ _ ->
+            card
+
+
+setUsed : PlayedCard -> PlayedCard
+setUsed card =
+    case card of
+        AbilityCard playerCard _ isDoubled ->
+            AbilityCard playerCard Used isDoubled
+
+        NormalCard _ _ ->
+            card
 
 
 attemptUse : Int -> FightArea a -> Maybe ( SpecialAbility, { setCardInUse : FightArea a, setCardUsed : FightArea a } )
@@ -154,10 +191,10 @@ attemptUse index (FightArea enemy playedCards) =
     List.Extra.getAt index playedCards
         |> Maybe.andThen getCardWithUnusedAbility
         |> Maybe.map
-            (\( playerCard, ability ) ->
+            (\( playedCard, ability ) ->
                 ( ability
-                , { setCardInUse = FightArea enemy (replaceAtIndex index (AbilityCard playerCard InUse) playedCards)
-                  , setCardUsed = FightArea enemy (replaceAtIndex index (AbilityCard playerCard Used) playedCards)
+                , { setCardInUse = FightArea enemy (replaceAtIndex index (setInUse playedCard) playedCards)
+                  , setCardUsed = FightArea enemy (replaceAtIndex index (setUsed playedCard) playedCards)
                   }
                 )
             )
@@ -169,8 +206,8 @@ setInUseToUsed (FightArea enemy cards) =
         setInUseCardToUsed : PlayedCard -> PlayedCard
         setInUseCardToUsed playedCard =
             case playedCard of
-                AbilityCard card InUse ->
-                    AbilityCard card Used
+                AbilityCard card InUse isDoubled ->
+                    AbilityCard card Used isDoubled
 
                 _ ->
                     playedCard
@@ -191,8 +228,8 @@ undoAllInUse (FightArea enemy cards) =
         setInUseCardToUnused : PlayedCard -> PlayedCard
         setInUseCardToUnused card =
             case card of
-                AbilityCard abilityCard InUse ->
-                    AbilityCard abilityCard NotUsed
+                AbilityCard abilityCard InUse isDoubled ->
+                    AbilityCard abilityCard NotUsed isDoubled
 
                 _ ->
                     card
@@ -200,3 +237,26 @@ undoAllInUse (FightArea enemy cards) =
     cards
         |> List.map setInUseCardToUnused
         |> FightArea enemy
+
+
+attemptDoublePlayedCard : PlayedCard -> Maybe PlayedCard
+attemptDoublePlayedCard card =
+    case card of
+        AbilityCard playerCard useState False ->
+            Just (AbilityCard playerCard useState True)
+
+        NormalCard playerCard False ->
+            Just (NormalCard playerCard True)
+
+        _ ->
+            Nothing
+
+
+attemptDouble : Int -> FightArea a -> Maybe (FightArea a)
+attemptDouble index (FightArea enemy cards) =
+    List.Extra.getAt index cards
+        |> Maybe.andThen attemptDoublePlayedCard
+        |> Maybe.map
+            (\doubledCard ->
+                FightArea enemy (replaceAtIndex index doubledCard cards)
+            )

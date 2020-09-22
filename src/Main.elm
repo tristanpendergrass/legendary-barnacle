@@ -61,6 +61,7 @@ type FightView
     = NormalFightView
     | SortView (SortArea PlayerCard)
     | SelectCopyView
+    | SelectDoubleView
 
 
 type GameState
@@ -165,7 +166,10 @@ type Msg
     | SortReveal
       -- case FightView of SelectCopyView
     | SelectCopy Int
-    | CancelCopy
+    | CancelAbilitiesInUse
+      -- case FightView of SelectDoubleView
+    | SelectDouble Int
+    | CancelDouble
       -- Resolving hazard
     | AcceptWin
     | ToggleLossDestroy Int
@@ -298,6 +302,19 @@ updateGameInProgress msg gameState =
                             FightArea.playCard drawnCard fightArea
                     in
                     ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+
+        ( Draw, FinalShowdown commonState fightArea NormalFightView ) ->
+            case drawCard commonState of
+                Nothing ->
+                    noOp
+
+                Just ( drawnCard, newCommonState ) ->
+                    let
+                        newFightArea : FightArea PirateCard
+                        newFightArea =
+                            FightArea.playCard drawnCard fightArea
+                    in
+                    ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
 
         ( EndFight, FightingHazard commonState fightArea NormalFightView ) ->
             let
@@ -617,11 +634,27 @@ updateGameInProgress msg gameState =
                 Nothing ->
                     noOp
 
-        ( CancelCopy, FightingHazard commonState fightArea SelectCopyView ) ->
+        ( CancelAbilitiesInUse, FightingHazard commonState fightArea SelectCopyView ) ->
             ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
-        ( CancelCopy, FinalShowdown commonState fightArea SelectCopyView ) ->
+        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea SelectCopyView ) ->
             ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
+
+        ( SelectDouble index, FightingHazard commonState fightArea SelectDoubleView ) ->
+            case FightArea.attemptDouble index fightArea of
+                Just newFightArea ->
+                    ( GameInProgress (FightingHazard commonState (FightArea.setInUseToUsed newFightArea) NormalFightView), Cmd.none )
+
+                Nothing ->
+                    noOp
+
+        ( SelectDouble index, FinalShowdown commonState fightArea SelectDoubleView ) ->
+            case FightArea.attemptDouble index fightArea of
+                Just newFightArea ->
+                    ( GameInProgress (FinalShowdown commonState (FightArea.setInUseToUsed newFightArea) NormalFightView), Cmd.none )
+
+                Nothing ->
+                    noOp
 
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
@@ -706,6 +739,9 @@ resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
 
         Copy ->
             ( commonState, setCardInUse, SelectCopyView )
+
+        Double ->
+            ( commonState, setCardInUse, SelectDoubleView )
 
         _ ->
             Debug.todo "Implement missing ability"
