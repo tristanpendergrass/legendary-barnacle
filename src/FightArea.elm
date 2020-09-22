@@ -1,6 +1,7 @@
 module FightArea exposing
     ( FightArea
     , attemptDouble
+    , attemptExchange
     , attemptUse
     , createFightArea
     , getCard
@@ -145,8 +146,8 @@ setCardUsed index (FightArea enemy cards) =
         (List.indexedMap (setUsedIfIndexMatches index) cards)
 
 
-replaceAtIndex : Int -> a -> List a -> List a
-replaceAtIndex index x xs =
+replaceAtIndex : Int -> List a -> a -> List a
+replaceAtIndex index xs x =
     List.concat
         [ List.take index xs
         , [ x ]
@@ -193,8 +194,8 @@ attemptUse index (FightArea enemy playedCards) =
         |> Maybe.map
             (\( playedCard, ability ) ->
                 ( ability
-                , { setCardInUse = FightArea enemy (replaceAtIndex index (setInUse playedCard) playedCards)
-                  , setCardUsed = FightArea enemy (replaceAtIndex index (setUsed playedCard) playedCards)
+                , { setCardInUse = FightArea enemy (replaceAtIndex index playedCards (setInUse playedCard))
+                  , setCardUsed = FightArea enemy (replaceAtIndex index playedCards (setUsed playedCard))
                   }
                 )
             )
@@ -258,5 +259,24 @@ attemptDouble index (FightArea enemy cards) =
         |> Maybe.andThen attemptDoublePlayedCard
         |> Maybe.map
             (\doubledCard ->
-                FightArea enemy (replaceAtIndex index doubledCard cards)
+                FightArea enemy (replaceAtIndex index cards doubledCard)
+            )
+
+
+getOnExchange : FightArea a -> Int -> PlayerCard -> FightArea a
+getOnExchange (FightArea enemy cards) index newElement =
+    let
+        newCards : List PlayedCard
+        newCards =
+            replaceAtIndex index cards (toPlayedCard newElement)
+    in
+    FightArea enemy newCards
+
+
+attemptExchange : Int -> FightArea a -> Maybe ( PlayerCard, PlayerCard -> FightArea a )
+attemptExchange index (FightArea enemy cards) =
+    List.Extra.getAt index cards
+        |> Maybe.map
+            (\card ->
+                ( fromPlayedCard card, getOnExchange (FightArea enemy cards) index )
             )

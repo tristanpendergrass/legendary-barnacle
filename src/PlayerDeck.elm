@@ -1,4 +1,4 @@
-module PlayerDeck exposing (PlayerDeck, create, discard, draw, putOnTop)
+module PlayerDeck exposing (PlayerDeck, create, discard, draw, putOnBottom, putOnTop)
 
 import AgingCard exposing (AgingCard)
 import PlayerCard exposing (PlayerCard)
@@ -57,6 +57,11 @@ discard cards (PlayerDeck drawPile discardPile agingCards) =
 putOnTop : List PlayerCard -> PlayerDeck -> PlayerDeck
 putOnTop cards (PlayerDeck drawPile discardPile agingCards) =
     PlayerDeck (List.append cards drawPile) discardPile agingCards
+
+
+putOnBottom : PlayerCard -> PlayerDeck -> PlayerDeck
+putOnBottom card (PlayerDeck drawPile discardPile agingCard) =
+    PlayerDeck (List.append drawPile [ card ]) discardPile agingCard
 
 
 

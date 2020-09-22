@@ -62,6 +62,7 @@ type FightView
     | SortView (SortArea PlayerCard)
     | SelectCopyView
     | SelectDoubleView
+    | SelectBelowTheStackView Int
 
 
 type GameState
@@ -159,6 +160,7 @@ type Msg
     | Draw
     | EndFight
     | UseAbility Int
+    | CancelAbilitiesInUse
       -- case FightView of SortView
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
@@ -166,10 +168,10 @@ type Msg
     | SortReveal
       -- case FightView of SelectCopyView
     | SelectCopy Int
-    | CancelAbilitiesInUse
       -- case FightView of SelectDoubleView
     | SelectDouble Int
-    | CancelDouble
+      -- case FightView of SelectBelowTheStackView
+    | SelectBelowTheStack Int
       -- Resolving hazard
     | AcceptWin
     | ToggleLossDestroy Int
@@ -266,6 +268,19 @@ drawCard commonState =
 
         ( Just ( drawnCard, newPlayerDeck ), newSeed ) ->
             Just ( drawnCard, { commonState | playerDeck = newPlayerDeck, seed = newSeed } )
+
+
+putOnBottom : PlayerCard -> CommonState -> CommonState
+putOnBottom card commonState =
+    { commonState | playerDeck = PlayerDeck.putOnBottom card commonState.playerDeck }
+
+
+putOnBottomAndDraw : PlayerCard -> CommonState -> ( PlayerCard, CommonState )
+putOnBottomAndDraw card commonState =
+    commonState
+        |> putOnBottom card
+        |> drawCard
+        |> Maybe.withDefault ( card, commonState )
 
 
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
@@ -460,6 +475,7 @@ updateGameInProgress msg gameState =
                         ( newCommonState, newFightArea, newFightView ) =
                             resolveAbility
                                 { ability = ability
+                                , index = index
                                 , setCardInUse = setCardInUse
                                 , setCardUsed = setCardUsed
                                 , commonState = commonState
@@ -481,6 +497,7 @@ updateGameInProgress msg gameState =
                         ( newCommonState, newFightArea, newFightView ) =
                             resolveAbility
                                 { ability = ability
+                                , index = index
                                 , setCardInUse = setCardInUse
                                 , setCardUsed = setCardUsed
                                 , commonState = commonState
@@ -491,6 +508,12 @@ updateGameInProgress msg gameState =
 
                 Nothing ->
                     noOp
+
+        ( CancelAbilitiesInUse, FightingHazard commonState fightArea SelectCopyView ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
+
+        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea SelectCopyView ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
         ( SortFinish, FightingHazard commonState fightArea (SortView sortArea) ) ->
             let
@@ -602,6 +625,7 @@ updateGameInProgress msg gameState =
                         ( newCommonState, newFightArea, newFightView ) =
                             resolveAbility
                                 { ability = ability
+                                , index = index
                                 , setCardInUse = fightArea
                                 , setCardUsed = fightArea
                                 , commonState = commonState
@@ -623,6 +647,7 @@ updateGameInProgress msg gameState =
                         ( newCommonState, newFightArea, newFightView ) =
                             resolveAbility
                                 { ability = ability
+                                , index = index
                                 , setCardInUse = fightArea
                                 , setCardUsed = fightArea
                                 , commonState = commonState
@@ -633,12 +658,6 @@ updateGameInProgress msg gameState =
 
                 Nothing ->
                     noOp
-
-        ( CancelAbilitiesInUse, FightingHazard commonState fightArea SelectCopyView ) ->
-            ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
-
-        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea SelectCopyView ) ->
-            ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
         ( SelectDouble index, FightingHazard commonState fightArea SelectDoubleView ) ->
             case FightArea.attemptDouble index fightArea of
@@ -655,6 +674,40 @@ updateGameInProgress msg gameState =
 
                 Nothing ->
                     noOp
+
+        ( SelectBelowTheStack index, FightingHazard commonState fightArea (SelectBelowTheStackView belowTheStackIndex) ) ->
+            if index == belowTheStackIndex then
+                -- card cannot use ability on itself
+                noOp
+
+            else
+                case FightArea.attemptExchange index fightArea of
+                    Just ( playerCard, onExchange ) ->
+                        let
+                            ( drawnCard, newCommonState ) =
+                                putOnBottomAndDraw playerCard commonState
+                        in
+                        ( GameInProgress (FightingHazard newCommonState (onExchange drawnCard) NormalFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
+        ( SelectBelowTheStack index, FinalShowdown commonState fightArea (SelectBelowTheStackView belowTheStackIndex) ) ->
+            if index == belowTheStackIndex then
+                -- card cannot use ability on itself
+                noOp
+
+            else
+                case FightArea.attemptExchange index fightArea of
+                    Just ( playerCard, onExchange ) ->
+                        let
+                            ( drawnCard, newCommonState ) =
+                                putOnBottomAndDraw playerCard commonState
+                        in
+                        ( GameInProgress (FinalShowdown newCommonState (onExchange drawnCard) NormalFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
 
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
@@ -703,6 +756,7 @@ updateGameInProgress msg gameState =
 
 type alias ResolveAbilityArg a =
     { ability : SpecialAbility
+    , index : Int
     , setCardInUse : FightArea a
     , setCardUsed : FightArea a
     , commonState : CommonState
@@ -711,7 +765,7 @@ type alias ResolveAbilityArg a =
 
 
 resolveAbility : ResolveAbilityArg a -> ( CommonState, FightArea a, FightView )
-resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
+resolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightArea } =
     case ability of
         PlusOneLife ->
             let
@@ -742,6 +796,9 @@ resolveAbility { ability, setCardInUse, setCardUsed, commonState, fightArea } =
 
         Double ->
             ( commonState, setCardInUse, SelectDoubleView )
+
+        BelowTheStack ->
+            ( commonState, setCardInUse, SelectBelowTheStackView index )
 
         _ ->
             Debug.todo "Implement missing ability"
