@@ -68,6 +68,7 @@ type FightView
     | SelectDoubleView
     | SelectBelowTheStackView Int
     | SelectExchangeView Int AndAnother
+    | SelectDestroyView Int
 
 
 type GameState
@@ -160,25 +161,20 @@ type Msg
     | ChooseRightHazard
     | ChooseSingleHazard
     | ChooseSkipHazard
-      -- Fighting hazard
-      -- case FightView of NormalView
+      -- Fighting hazard/Final Showdown
     | Draw
     | EndFight
     | UseAbility Int
     | CancelAbilitiesInUse
-      -- case FightView of SortView
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
     | SortDiscard SortArea.SortIndex
     | SortReveal
-      -- case FightView of SelectCopyView
     | SelectCopy Int
-      -- case FightView of SelectDoubleView
     | SelectDouble Int
-      -- case FightView of SelectBelowTheStackView
     | SelectBelowTheStack Int
-      -- case FightView of SelectExchange
     | SelectExchange Int
+    | SelectDestroy Int
       -- Resolving hazard
     | AcceptWin
     | ToggleLossDestroy Int
@@ -747,8 +743,16 @@ updateGameInProgress msg gameState =
 
                                 else
                                     NormalFightView
+
+                            newFightArea : FightArea HazardCard
+                            newFightArea =
+                                if andAnother then
+                                    onExchange drawnCard
+
+                                else
+                                    FightArea.setInUseToUsed (onExchange drawnCard)
                         in
-                        ( GameInProgress (FightingHazard newCommonState (onExchange drawnCard) newFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
 
                     Nothing ->
                         noOp
@@ -771,8 +775,50 @@ updateGameInProgress msg gameState =
 
                                 else
                                     NormalFightView
+
+                            newFightArea : FightArea PirateCard
+                            newFightArea =
+                                if andAnother then
+                                    onExchange drawnCard
+
+                                else
+                                    FightArea.setInUseToUsed (onExchange drawnCard)
                         in
-                        ( GameInProgress (FinalShowdown newCommonState (onExchange drawnCard) newFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
+        ( SelectDestroy index, FightingHazard commonState fightArea (SelectDestroyView destroyIndex) ) ->
+            if index == destroyIndex then
+                noOp
+
+            else
+                case FightArea.attemptDestroy index fightArea of
+                    Just onDestroy ->
+                        let
+                            newFightArea : FightArea HazardCard
+                            newFightArea =
+                                FightArea.setInUseToUsed onDestroy
+                        in
+                        ( GameInProgress (FightingHazard commonState newFightArea NormalFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
+        ( SelectDestroy index, FinalShowdown commonState fightArea (SelectDestroyView destroyIndex) ) ->
+            if index == destroyIndex then
+                noOp
+
+            else
+                case FightArea.attemptDestroy index fightArea of
+                    Just onDestroy ->
+                        let
+                            newFightArea : FightArea PirateCard
+                            newFightArea =
+                                FightArea.setInUseToUsed onDestroy
+                        in
+                        ( GameInProgress (FinalShowdown commonState newFightArea NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
@@ -870,6 +916,9 @@ resolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightAr
 
         ExchangeTwo ->
             ( commonState, setCardInUse, SelectExchangeView index True )
+
+        Destroy ->
+            ( commonState, setCardInUse, SelectDestroyView index )
 
         _ ->
             Debug.todo "Implement missing ability"

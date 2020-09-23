@@ -1,5 +1,6 @@
 module FightArea exposing
     ( FightArea
+    , attemptDestroy
     , attemptDouble
     , attemptExchange
     , attemptUse
@@ -280,3 +281,17 @@ attemptExchange index (FightArea enemy cards) =
             (\card ->
                 ( fromPlayedCard card, getOnExchange (FightArea enemy cards) index )
             )
+
+
+attemptDestroy : Int -> FightArea a -> Maybe (FightArea a)
+attemptDestroy index (FightArea enemy cards) =
+    let
+        newCards : Maybe (List PlayedCard)
+        newCards =
+            if index > 0 && index < List.length cards then
+                Just (List.take index cards ++ List.drop (index + 1) cards)
+
+            else
+                Nothing
+    in
+    Maybe.map (FightArea enemy) newCards
