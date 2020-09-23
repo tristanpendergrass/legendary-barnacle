@@ -9,6 +9,7 @@ module FightArea exposing
     , getCards
     , getEnemy
     , getPlayerStrength
+    , hasUnusedAgingCards
     , playCard
     , setCardUsed
     , setInUseToUsed
@@ -295,3 +296,18 @@ attemptDestroy index (FightArea enemy cards) =
                 Nothing
     in
     Maybe.map (FightArea enemy) newCards
+
+
+hasUnusedAgingCards : FightArea a -> Bool
+hasUnusedAgingCards (FightArea _ cards) =
+    let
+        isUnusedAgingCard : PlayedCard -> Bool
+        isUnusedAgingCard playedCard =
+            case playedCard of
+                AbilityCard playerCard NotUsed _ ->
+                    PlayerCard.isAgingCard playerCard
+
+                _ ->
+                    False
+    in
+    List.any isUnusedAgingCard cards
