@@ -57,12 +57,17 @@ type ResolvingState
     | PlayerLost Int (SelectionList PlayerCard)
 
 
+type alias AndAnother =
+    Bool
+
+
 type FightView
     = NormalFightView
     | SortView (SortArea PlayerCard)
     | SelectCopyView
     | SelectDoubleView
     | SelectBelowTheStackView Int
+    | SelectExchangeView Int AndAnother
 
 
 type GameState
@@ -172,6 +177,8 @@ type Msg
     | SelectDouble Int
       -- case FightView of SelectBelowTheStackView
     | SelectBelowTheStack Int
+      -- case FightView of SelectExchange
+    | SelectExchange Int
       -- Resolving hazard
     | AcceptWin
     | ToggleLossDestroy Int
@@ -273,6 +280,19 @@ drawCard commonState =
 putOnBottom : PlayerCard -> CommonState -> CommonState
 putOnBottom card commonState =
     { commonState | playerDeck = PlayerDeck.putOnBottom card commonState.playerDeck }
+
+
+discardCard : PlayerCard -> CommonState -> CommonState
+discardCard card commonState =
+    { commonState | playerDeck = PlayerDeck.discard [ card ] commonState.playerDeck }
+
+
+discardCardAndDraw : PlayerCard -> CommonState -> ( PlayerCard, CommonState )
+discardCardAndDraw card commonState =
+    commonState
+        |> discardCard card
+        |> drawCard
+        |> Maybe.withDefault ( card, commonState )
 
 
 putOnBottomAndDraw : PlayerCard -> CommonState -> ( PlayerCard, CommonState )
@@ -709,6 +729,54 @@ updateGameInProgress msg gameState =
                     Nothing ->
                         noOp
 
+        ( SelectExchange index, FightingHazard commonState fightArea (SelectExchangeView exchangeIndex andAnother) ) ->
+            if index == exchangeIndex then
+                noOp
+
+            else
+                case FightArea.attemptExchange index fightArea of
+                    Just ( playerCard, onExchange ) ->
+                        let
+                            ( drawnCard, newCommonState ) =
+                                discardCardAndDraw playerCard commonState
+
+                            newFightView : FightView
+                            newFightView =
+                                if andAnother then
+                                    SelectExchangeView exchangeIndex False
+
+                                else
+                                    NormalFightView
+                        in
+                        ( GameInProgress (FightingHazard newCommonState (onExchange drawnCard) newFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
+        ( SelectExchange index, FinalShowdown commonState fightArea (SelectExchangeView exchangeIndex andAnother) ) ->
+            if index == exchangeIndex then
+                noOp
+
+            else
+                case FightArea.attemptExchange index fightArea of
+                    Just ( playerCard, onExchange ) ->
+                        let
+                            ( drawnCard, newCommonState ) =
+                                discardCardAndDraw playerCard commonState
+
+                            newFightView : FightView
+                            newFightView =
+                                if andAnother then
+                                    SelectExchangeView exchangeIndex False
+
+                                else
+                                    NormalFightView
+                        in
+                        ( GameInProgress (FinalShowdown newCommonState (onExchange drawnCard) newFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
                 newCommonState : CommonState
@@ -799,6 +867,9 @@ resolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightAr
 
         BelowTheStack ->
             ( commonState, setCardInUse, SelectBelowTheStackView index )
+
+        ExchangeTwo ->
+            ( commonState, setCardInUse, SelectExchangeView index True )
 
         _ ->
             Debug.todo "Implement missing ability"
