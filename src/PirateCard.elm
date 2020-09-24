@@ -1,4 +1,4 @@
-module PirateCard exposing (PirateCard, getStrength, getTwoPirates)
+module PirateCard exposing (PirateCard, getFreeCards, getStrength, getTwoPirates)
 
 import Random
 import Random.List
@@ -64,3 +64,10 @@ getStrength pirateCard =
     case pirateCard of
         Normal { hazardValue } ->
             hazardValue
+
+
+getFreeCards : PirateCard -> Int
+getFreeCards pirateCard =
+    case pirateCard of
+        Normal { freeCards } ->
+            freeCards

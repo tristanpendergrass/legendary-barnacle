@@ -329,11 +329,13 @@ updateGameInProgress msg gameState =
                 Just ( drawnCard, onDraw ) ->
                     let
                         hazardCard : HazardCard
-                        hazardCard = FightArea.getEnemy fightArea
+                        hazardCard =
+                            FightArea.getEnemy fightArea
 
                         -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
                         drawCostsLife : Bool
-                        drawCostsLife = List.length (FightArea.getCards fightArea) >= HazardCard.getFreeCards hazardCard
+                        drawCostsLife =
+                            List.length (FightArea.getCards fightArea) >= HazardCard.getFreeCards hazardCard
 
                         newFightArea : FightArea HazardCard
                         newFightArea =
@@ -342,22 +344,21 @@ updateGameInProgress msg gameState =
                     if drawCostsLife then
                         let
                             maybeNewLifePoints : Maybe LifePoints.Counter
-                            maybeNewLifePoints = 
+                            maybeNewLifePoints =
                                 LifePoints.decrementCounter 1 commonState.lifePoints
-
                         in
                         case maybeNewLifePoints of
                             Nothing ->
-                                (GameOver, Cmd.none)
+                                ( GameOver, Cmd.none )
 
                             Just newLifePoints ->
                                 let
                                     newCommonState : CommonState
                                     newCommonState =
-                                        {onDraw | lifePoints = newLifePoints}
+                                        { onDraw | lifePoints = newLifePoints }
                                 in
-                                (GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none)
-                    
+                                ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+
                     else
                         ( GameInProgress (FightingHazard onDraw newFightArea NormalFightView), Cmd.none )
 
@@ -366,13 +367,41 @@ updateGameInProgress msg gameState =
                 Nothing ->
                     noOp
 
-                Just ( drawnCard, newCommonState ) ->
+                Just ( drawnCard, onDraw ) ->
                     let
+                        enemyCard : PirateCard
+                        enemyCard =
+                            FightArea.getEnemy fightArea
+
+                        -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
+                        drawCostsLife : Bool
+                        drawCostsLife =
+                            List.length (FightArea.getCards fightArea) >= PirateCard.getFreeCards enemyCard
+
                         newFightArea : FightArea PirateCard
                         newFightArea =
                             FightArea.playCard drawnCard fightArea
                     in
-                    ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
+                    if drawCostsLife then
+                        let
+                            maybeNewLifePoints : Maybe LifePoints.Counter
+                            maybeNewLifePoints =
+                                LifePoints.decrementCounter 1 commonState.lifePoints
+                        in
+                        case maybeNewLifePoints of
+                            Nothing ->
+                                ( GameOver, Cmd.none )
+
+                            Just newLifePoints ->
+                                let
+                                    newCommonState : CommonState
+                                    newCommonState =
+                                        { onDraw | lifePoints = newLifePoints }
+                                in
+                                ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
+
+                    else
+                        ( GameInProgress (FinalShowdown onDraw newFightArea NormalFightView), Cmd.none )
 
         ( EndFight, FightingHazard commonState fightArea NormalFightView ) ->
             let
