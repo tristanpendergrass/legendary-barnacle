@@ -326,13 +326,40 @@ updateGameInProgress msg gameState =
                 Nothing ->
                     noOp
 
-                Just ( drawnCard, newCommonState ) ->
+                Just ( drawnCard, onDraw ) ->
                     let
+                        hazardCard : HazardCard
+                        hazardCard = FightArea.getEnemy fightArea
+
+                        -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
+                        drawCostsLife : Bool
+                        drawCostsLife = List.length (FightArea.getCards fightArea) >= HazardCard.getFreeCards hazardCard
+
                         newFightArea : FightArea HazardCard
                         newFightArea =
                             FightArea.playCard drawnCard fightArea
                     in
-                    ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+                    if drawCostsLife then
+                        let
+                            maybeNewLifePoints : Maybe LifePoints.Counter
+                            maybeNewLifePoints = 
+                                LifePoints.decrementCounter 1 commonState.lifePoints
+
+                        in
+                        case maybeNewLifePoints of
+                            Nothing ->
+                                (GameOver, Cmd.none)
+
+                            Just newLifePoints ->
+                                let
+                                    newCommonState : CommonState
+                                    newCommonState =
+                                        {onDraw | lifePoints = newLifePoints}
+                                in
+                                (GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none)
+                    
+                    else
+                        ( GameInProgress (FightingHazard onDraw newFightArea NormalFightView), Cmd.none )
 
         ( Draw, FinalShowdown commonState fightArea NormalFightView ) ->
             case drawCard commonState of
@@ -362,15 +389,27 @@ updateGameInProgress msg gameState =
 
                 hazardStrength : Int
                 hazardStrength =
-                    case phase of
-                        PhaseGreen ->
-                            HazardCard.getGreenValue hazard
+                    if FightArea.isPhaseMinusOne fightArea then
+                        case phase of
+                            PhaseGreen ->
+                                HazardCard.getGreenValue hazard
 
-                        PhaseYellow ->
-                            HazardCard.getYellowValue hazard
+                            PhaseYellow ->
+                                HazardCard.getGreenValue hazard
 
-                        PhaseRed ->
-                            HazardCard.getRedValue hazard
+                            PhaseRed ->
+                                HazardCard.getYellowValue hazard
+
+                    else
+                        case phase of
+                            PhaseGreen ->
+                                HazardCard.getGreenValue hazard
+
+                            PhaseYellow ->
+                                HazardCard.getYellowValue hazard
+
+                            PhaseRed ->
+                                HazardCard.getRedValue hazard
 
                 strengthDifference : Int
                 strengthDifference =
@@ -923,6 +962,14 @@ resolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightAr
 
         Destroy ->
             ( commonState, setCardInUse, SelectDestroyView index )
+
+        PhaseMinusOne ->
+            let
+                newFightArea : FightArea a
+                newFightArea =
+                    FightArea.setPhaseMinusOne setCardUsed
+            in
+            ( commonState, newFightArea, NormalFightView )
 
         _ ->
             Debug.todo "Implement missing ability"
