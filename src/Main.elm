@@ -162,7 +162,7 @@ type Msg
     | ChooseSingleHazard
     | ChooseSkipHazard
       -- Fighting hazard/Final Showdown
-    | Draw
+    | DrawNormally
     | EndFight
     | UseAbility Int
     | CancelAbilitiesInUse
@@ -299,6 +299,51 @@ putOnBottomAndDraw card commonState =
         |> Maybe.withDefault ( card, commonState )
 
 
+type DrawCardNormallyResult a
+    = CantDrawNormally
+    | DrawingKillsPlayer
+    | DrewCardNormally { newCommonState : CommonState, newFightArea : FightArea a }
+
+
+attemptDrawNormally : CommonState -> FightArea a -> Int -> DrawCardNormallyResult a
+attemptDrawNormally commonState fightArea freeCards =
+    case drawCard commonState of
+        Nothing ->
+            CantDrawNormally
+
+        Just ( drawnCard, onDraw ) ->
+            let
+                -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
+                drawCostsLife : Bool
+                drawCostsLife =
+                    List.length (FightArea.getCards fightArea) >= freeCards
+
+                newFightArea : FightArea a
+                newFightArea =
+                    FightArea.playCard drawnCard fightArea
+            in
+            if drawCostsLife then
+                let
+                    maybeNewLifePoints : Maybe LifePoints.Counter
+                    maybeNewLifePoints =
+                        LifePoints.decrementCounter 1 commonState.lifePoints
+                in
+                case maybeNewLifePoints of
+                    Nothing ->
+                        DrawingKillsPlayer
+
+                    Just newLifePoints ->
+                        let
+                            newCommonState : CommonState
+                            newCommonState =
+                                { onDraw | lifePoints = newLifePoints }
+                        in
+                        DrewCardNormally { newCommonState = newCommonState, newFightArea = newFightArea }
+
+            else
+                DrewCardNormally { newCommonState = onDraw, newFightArea = newFightArea }
+
+
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
 updateGameInProgress msg gameState =
     let
@@ -321,87 +366,41 @@ updateGameInProgress msg gameState =
             ( GameInProgress (handlePhaseComplete (Just card) commonState), Cmd.none )
 
         -- Fight
-        ( Draw, FightingHazard commonState fightArea NormalFightView ) ->
-            case drawCard commonState of
-                Nothing ->
+        ( DrawNormally, FightingHazard commonState fightArea NormalFightView ) ->
+            let
+                freeDraws : Int
+                freeDraws =
+                    fightArea
+                        |> FightArea.getEnemy
+                        |> HazardCard.getFreeCards
+            in
+            case attemptDrawNormally commonState fightArea freeDraws of
+                DrawingKillsPlayer ->
+                    ( GameOver, Cmd.none )
+
+                CantDrawNormally ->
                     noOp
 
-                Just ( drawnCard, onDraw ) ->
-                    let
-                        hazardCard : HazardCard
-                        hazardCard =
-                            FightArea.getEnemy fightArea
+                DrewCardNormally { newCommonState, newFightArea } ->
+                    ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
 
-                        -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
-                        drawCostsLife : Bool
-                        drawCostsLife =
-                            List.length (FightArea.getCards fightArea) >= HazardCard.getFreeCards hazardCard
+        ( DrawNormally, FinalShowdown commonState fightArea NormalFightView ) ->
+            let
+                freeDraws : Int
+                freeDraws =
+                    fightArea
+                        |> FightArea.getEnemy
+                        |> PirateCard.getFreeCards
+            in
+            case attemptDrawNormally commonState fightArea freeDraws of
+                DrawingKillsPlayer ->
+                    ( GameOver, Cmd.none )
 
-                        newFightArea : FightArea HazardCard
-                        newFightArea =
-                            FightArea.playCard drawnCard fightArea
-                    in
-                    if drawCostsLife then
-                        let
-                            maybeNewLifePoints : Maybe LifePoints.Counter
-                            maybeNewLifePoints =
-                                LifePoints.decrementCounter 1 commonState.lifePoints
-                        in
-                        case maybeNewLifePoints of
-                            Nothing ->
-                                ( GameOver, Cmd.none )
-
-                            Just newLifePoints ->
-                                let
-                                    newCommonState : CommonState
-                                    newCommonState =
-                                        { onDraw | lifePoints = newLifePoints }
-                                in
-                                ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
-
-                    else
-                        ( GameInProgress (FightingHazard onDraw newFightArea NormalFightView), Cmd.none )
-
-        ( Draw, FinalShowdown commonState fightArea NormalFightView ) ->
-            case drawCard commonState of
-                Nothing ->
+                CantDrawNormally ->
                     noOp
 
-                Just ( drawnCard, onDraw ) ->
-                    let
-                        enemyCard : PirateCard
-                        enemyCard =
-                            FightArea.getEnemy fightArea
-
-                        -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
-                        drawCostsLife : Bool
-                        drawCostsLife =
-                            List.length (FightArea.getCards fightArea) >= PirateCard.getFreeCards enemyCard
-
-                        newFightArea : FightArea PirateCard
-                        newFightArea =
-                            FightArea.playCard drawnCard fightArea
-                    in
-                    if drawCostsLife then
-                        let
-                            maybeNewLifePoints : Maybe LifePoints.Counter
-                            maybeNewLifePoints =
-                                LifePoints.decrementCounter 1 commonState.lifePoints
-                        in
-                        case maybeNewLifePoints of
-                            Nothing ->
-                                ( GameOver, Cmd.none )
-
-                            Just newLifePoints ->
-                                let
-                                    newCommonState : CommonState
-                                    newCommonState =
-                                        { onDraw | lifePoints = newLifePoints }
-                                in
-                                ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
-
-                    else
-                        ( GameInProgress (FinalShowdown onDraw newFightArea NormalFightView), Cmd.none )
+                DrewCardNormally { newCommonState, newFightArea } ->
+                    ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
 
         ( EndFight, FightingHazard commonState fightArea NormalFightView ) ->
             let
