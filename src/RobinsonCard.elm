@@ -1,4 +1,4 @@
-module RobinsonCard exposing (RobinsonCard, getAbility, getFightingValue, getInitial, hasAbility)
+module RobinsonCard exposing (RobinsonCard, getAbility, getInitial, getStrength, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -14,27 +14,27 @@ type RobinsonCard
 
 distractedRobinson : RobinsonCard
 distractedRobinson =
-    RobinsonCard { title = "distracted", fightingValue = -1, specialAbility = Nothing }
+    RobinsonCard { title = "distracted", strength = -1, specialAbility = Nothing }
 
 
 focused : RobinsonCard
 focused =
-    RobinsonCard { title = "focused", fightingValue = 1, specialAbility = Nothing }
+    RobinsonCard { title = "focused", strength = 1, specialAbility = Nothing }
 
 
 weak : RobinsonCard
 weak =
-    RobinsonCard { title = "weak", fightingValue = 0, specialAbility = Nothing }
+    RobinsonCard { title = "weak", strength = 0, specialAbility = Nothing }
 
 
 genius : RobinsonCard
 genius =
-    RobinsonCard { title = "genius", fightingValue = 2, specialAbility = Nothing }
+    RobinsonCard { title = "genius", strength = 2, specialAbility = Nothing }
 
 
 eating : RobinsonCard
 eating =
-    RobinsonCard { title = "eating", fightingValue = 0, specialAbility = Just PlusOneLife }
+    RobinsonCard { title = "eating", strength = 0, specialAbility = Just PlusOneLife }
 
 
 getInitial : List RobinsonCard
@@ -64,6 +64,6 @@ getAbility =
     getFightStats >> .specialAbility
 
 
-getFightingValue : RobinsonCard -> Int
-getFightingValue =
-    getFightStats >> .fightingValue
+getStrength : RobinsonCard -> Int
+getStrength =
+    getFightStats >> .strength

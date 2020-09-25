@@ -89,7 +89,7 @@ getPlayedCardStrength playedCard =
         strength =
             playedCard
                 |> fromPlayedCard
-                |> PlayerCard.getFightingValue
+                |> PlayerCard.getStrength
     in
     case playedCard of
         AbilityCard _ _ False ->

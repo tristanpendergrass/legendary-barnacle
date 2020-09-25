@@ -23,6 +23,6 @@ type SpecialAbility
 
 type alias FightStats =
     { title : String
-    , fightingValue : Int
+    , strength : Int
     , specialAbility : Maybe SpecialAbility
     }

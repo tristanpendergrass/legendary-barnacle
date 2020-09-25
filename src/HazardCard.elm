@@ -1,4 +1,4 @@
-module HazardCard exposing (HazardCard, getAbility, getDummy, getFightingValue, getFreeCards, getGreenValue, getInitial, getRedValue, getYellowValue, hasAbility)
+module HazardCard exposing (HazardCard, getAbility, getDummy, getFreeCards, getGreenValue, getInitial, getRedValue, getStrength, getYellowValue, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -74,41 +74,41 @@ cannibals =
 
 food : HazardCard
 food =
-    HazardCard withTheRaft { title = "food", fightingValue = 0, specialAbility = Just PlusOneLife }
+    HazardCard withTheRaft { title = "food", strength = 0, specialAbility = Just PlusOneLife }
 
 
 hazardCards : List HazardCard
 hazardCards =
     [ food
     , food
-    , HazardCard withTheRaft { title = "realization", fightingValue = 0, specialAbility = Just Destroy }
-    , HazardCard withTheRaft { title = "deception", fightingValue = 0, specialAbility = Just BelowTheStack }
-    , HazardCard withTheRaft { title = "mimicry", fightingValue = 0, specialAbility = Just Copy }
-    , HazardCard withTheRaft { title = "strategy", fightingValue = 0, specialAbility = Just ExchangeTwo }
-    , HazardCard withTheRaft { title = "strategy", fightingValue = 0, specialAbility = Just ExchangeTwo }
-    , HazardCard withTheRaft { title = "equipment", fightingValue = 0, specialAbility = Just DrawTwo }
-    , HazardCard withTheRaft { title = "equipment", fightingValue = 0, specialAbility = Just DrawTwo }
-    , HazardCard withTheRaft { title = "books", fightingValue = 0, specialAbility = Just PhaseMinusOne }
-    , HazardCard exploringTheIsland { title = "food", fightingValue = 1, specialAbility = Just PlusOneLife }
-    , HazardCard exploringTheIsland { title = "food", fightingValue = 1, specialAbility = Just PlusOneLife }
-    , HazardCard exploringTheIsland { title = "realization", fightingValue = 1, specialAbility = Just Destroy }
-    , HazardCard exploringTheIsland { title = "deception", fightingValue = 1, specialAbility = Just BelowTheStack }
-    , HazardCard exploringTheIsland { title = "repeat", fightingValue = 1, specialAbility = Just Double }
-    , HazardCard exploringTheIsland { title = "weapon", fightingValue = 2, specialAbility = Nothing }
-    , HazardCard exploringTheIsland { title = "weapon", fightingValue = 2, specialAbility = Nothing }
-    , HazardCard exploringTheIsland { title = "mimicry", fightingValue = 1, specialAbility = Just Copy }
-    , HazardCard furtherExploringTheIsland { title = "food", fightingValue = 2, specialAbility = Just PlusOneLife }
-    , HazardCard furtherExploringTheIsland { title = "realization", fightingValue = 2, specialAbility = Just Destroy }
-    , HazardCard furtherExploringTheIsland { title = "strategy", fightingValue = 2, specialAbility = Just ExchangeOne }
-    , HazardCard furtherExploringTheIsland { title = "experience", fightingValue = 2, specialAbility = Just DrawOne }
-    , HazardCard furtherExploringTheIsland { title = "repeat", fightingValue = 2, specialAbility = Just Double }
-    , HazardCard furtherExploringTheIsland { title = "vision", fightingValue = 2, specialAbility = Just SortThree }
-    , HazardCard wildAnimals { title = "realization", fightingValue = 3, specialAbility = Just Destroy }
-    , HazardCard wildAnimals { title = "vision", fightingValue = 3, specialAbility = Just SortThree }
-    , HazardCard wildAnimals { title = "experience", fightingValue = 3, specialAbility = Just DrawOne }
-    , HazardCard wildAnimals { title = "strategy", fightingValue = 3, specialAbility = Just ExchangeOne }
-    , HazardCard cannibals { title = "weapon", fightingValue = 4, specialAbility = Nothing }
-    , HazardCard cannibals { title = "weapon", fightingValue = 4, specialAbility = Nothing }
+    , HazardCard withTheRaft { title = "realization", strength = 0, specialAbility = Just Destroy }
+    , HazardCard withTheRaft { title = "deception", strength = 0, specialAbility = Just BelowTheStack }
+    , HazardCard withTheRaft { title = "mimicry", strength = 0, specialAbility = Just Copy }
+    , HazardCard withTheRaft { title = "strategy", strength = 0, specialAbility = Just ExchangeTwo }
+    , HazardCard withTheRaft { title = "strategy", strength = 0, specialAbility = Just ExchangeTwo }
+    , HazardCard withTheRaft { title = "equipment", strength = 0, specialAbility = Just DrawTwo }
+    , HazardCard withTheRaft { title = "equipment", strength = 0, specialAbility = Just DrawTwo }
+    , HazardCard withTheRaft { title = "books", strength = 0, specialAbility = Just PhaseMinusOne }
+    , HazardCard exploringTheIsland { title = "food", strength = 1, specialAbility = Just PlusOneLife }
+    , HazardCard exploringTheIsland { title = "food", strength = 1, specialAbility = Just PlusOneLife }
+    , HazardCard exploringTheIsland { title = "realization", strength = 1, specialAbility = Just Destroy }
+    , HazardCard exploringTheIsland { title = "deception", strength = 1, specialAbility = Just BelowTheStack }
+    , HazardCard exploringTheIsland { title = "repeat", strength = 1, specialAbility = Just Double }
+    , HazardCard exploringTheIsland { title = "weapon", strength = 2, specialAbility = Nothing }
+    , HazardCard exploringTheIsland { title = "weapon", strength = 2, specialAbility = Nothing }
+    , HazardCard exploringTheIsland { title = "mimicry", strength = 1, specialAbility = Just Copy }
+    , HazardCard furtherExploringTheIsland { title = "food", strength = 2, specialAbility = Just PlusOneLife }
+    , HazardCard furtherExploringTheIsland { title = "realization", strength = 2, specialAbility = Just Destroy }
+    , HazardCard furtherExploringTheIsland { title = "strategy", strength = 2, specialAbility = Just ExchangeOne }
+    , HazardCard furtherExploringTheIsland { title = "experience", strength = 2, specialAbility = Just DrawOne }
+    , HazardCard furtherExploringTheIsland { title = "repeat", strength = 2, specialAbility = Just Double }
+    , HazardCard furtherExploringTheIsland { title = "vision", strength = 2, specialAbility = Just SortThree }
+    , HazardCard wildAnimals { title = "realization", strength = 3, specialAbility = Just Destroy }
+    , HazardCard wildAnimals { title = "vision", strength = 3, specialAbility = Just SortThree }
+    , HazardCard wildAnimals { title = "experience", strength = 3, specialAbility = Just DrawOne }
+    , HazardCard wildAnimals { title = "strategy", strength = 3, specialAbility = Just ExchangeOne }
+    , HazardCard cannibals { title = "weapon", strength = 4, specialAbility = Nothing }
+    , HazardCard cannibals { title = "weapon", strength = 4, specialAbility = Nothing }
     ]
 
 
@@ -160,6 +160,6 @@ getAbility =
     getFightStats >> .specialAbility
 
 
-getFightingValue : HazardCard -> Int
-getFightingValue =
-    getFightStats >> .fightingValue
+getStrength : HazardCard -> Int
+getStrength =
+    getFightStats >> .strength

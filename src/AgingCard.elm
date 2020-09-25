@@ -1,4 +1,4 @@
-module AgingCard exposing (AgingCard, getAbility, getFightingValue, getInitial, hasAbility)
+module AgingCard exposing (AgingCard, getAbility, getInitial, getStrength, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -21,47 +21,47 @@ type AgingCard
 
 veryTired : AgingCard
 veryTired =
-    AgingCard Normal { title = "very tired", fightingValue = 0, specialAbility = Just StopDrawing }
+    AgingCard Normal { title = "very tired", strength = 0, specialAbility = Just StopDrawing }
 
 
 stupid : AgingCard
 stupid =
-    AgingCard Normal { title = "stupid", fightingValue = -2, specialAbility = Nothing }
+    AgingCard Normal { title = "stupid", strength = -2, specialAbility = Nothing }
 
 
 hungry : AgingCard
 hungry =
-    AgingCard Normal { title = "hungry", fightingValue = 0, specialAbility = Just MinusOneLife }
+    AgingCard Normal { title = "hungry", strength = 0, specialAbility = Just MinusOneLife }
 
 
 scared : AgingCard
 scared =
-    AgingCard Normal { title = "scared", fightingValue = 0, specialAbility = Just HighestCardNull }
+    AgingCard Normal { title = "scared", strength = 0, specialAbility = Just HighestCardNull }
 
 
 distracted : AgingCard
 distracted =
-    AgingCard Normal { title = "distracted", fightingValue = -1, specialAbility = Nothing }
+    AgingCard Normal { title = "distracted", strength = -1, specialAbility = Nothing }
 
 
 veryStupid : AgingCard
 veryStupid =
-    AgingCard Normal { title = "very stupid", fightingValue = -3, specialAbility = Nothing }
+    AgingCard Normal { title = "very stupid", strength = -3, specialAbility = Nothing }
 
 
 moronic : AgingCard
 moronic =
-    AgingCard Difficult { title = "moronic", fightingValue = -4, specialAbility = Nothing }
+    AgingCard Difficult { title = "moronic", strength = -4, specialAbility = Nothing }
 
 
 suicidal : AgingCard
 suicidal =
-    AgingCard Difficult { title = "suicidal", fightingValue = -5, specialAbility = Nothing }
+    AgingCard Difficult { title = "suicidal", strength = -5, specialAbility = Nothing }
 
 
 veryHungry : AgingCard
 veryHungry =
-    AgingCard Difficult { title = "very hungry", fightingValue = 0, specialAbility = Just MinusTwoLife }
+    AgingCard Difficult { title = "very hungry", strength = 0, specialAbility = Just MinusTwoLife }
 
 
 normalAgingCards : List AgingCard
@@ -110,6 +110,6 @@ getAbility =
     getFightStats >> .specialAbility
 
 
-getFightingValue : AgingCard -> Int
-getFightingValue =
-    getFightStats >> .fightingValue
+getStrength : AgingCard -> Int
+getStrength =
+    getFightStats >> .strength

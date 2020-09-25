@@ -4,7 +4,7 @@ module PlayerCard exposing
     , fromHazardCard
     , fromRobinsonCard
     , getAbility
-    , getFightingValue
+    , getStrength
     , hasAbility
     , isAgingCard
     )
@@ -49,17 +49,17 @@ type PlayerCard
     | RobinsonType RobinsonCard
 
 
-getFightingValue : PlayerCard -> Int
-getFightingValue playerCard =
+getStrength : PlayerCard -> Int
+getStrength playerCard =
     case playerCard of
         AgingType agingCard ->
-            AgingCard.getFightingValue agingCard
+            AgingCard.getStrength agingCard
 
         HazardType hazardCard ->
-            HazardCard.getFightingValue hazardCard
+            HazardCard.getStrength hazardCard
 
         RobinsonType robinsonCard ->
-            RobinsonCard.getFightingValue robinsonCard
+            RobinsonCard.getStrength robinsonCard
 
 
 getAbility : PlayerCard -> Maybe SpecialAbility
