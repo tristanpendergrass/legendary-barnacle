@@ -312,36 +312,31 @@ attemptDrawNormally commonState fightArea freeCards =
             CantDrawNormally
 
         Just ( drawnCard, onDraw ) ->
-            let
-                -- TODO: refactor FightArea to track how many free cards have been drawn and compare that rather than total number of cards
-                drawCostsLife : Bool
-                drawCostsLife =
-                    List.length (FightArea.getCards fightArea) >= freeCards
+            case FightArea.attemptPlayFreeCard drawnCard freeCards fightArea of
+                Just newFightArea ->
+                    DrewCardNormally { newCommonState = onDraw, newFightArea = newFightArea }
 
-                newFightArea : FightArea a
-                newFightArea =
-                    FightArea.playCard drawnCard fightArea
-            in
-            if drawCostsLife then
-                let
-                    maybeNewLifePoints : Maybe LifePoints.Counter
-                    maybeNewLifePoints =
-                        LifePoints.decrementCounter 1 commonState.lifePoints
-                in
-                case maybeNewLifePoints of
-                    Nothing ->
-                        DrawingKillsPlayer
+                Nothing ->
+                    let
+                        newFightArea : FightArea a
+                        newFightArea =
+                            FightArea.playCard drawnCard fightArea
 
-                    Just newLifePoints ->
-                        let
-                            newCommonState : CommonState
-                            newCommonState =
-                                { onDraw | lifePoints = newLifePoints }
-                        in
-                        DrewCardNormally { newCommonState = newCommonState, newFightArea = newFightArea }
+                        maybeNewLifePoints : Maybe LifePoints.Counter
+                        maybeNewLifePoints =
+                            LifePoints.decrementCounter 1 commonState.lifePoints
+                    in
+                    case maybeNewLifePoints of
+                        Nothing ->
+                            DrawingKillsPlayer
 
-            else
-                DrewCardNormally { newCommonState = onDraw, newFightArea = newFightArea }
+                        Just newLifePoints ->
+                            let
+                                newCommonState : CommonState
+                                newCommonState =
+                                    { onDraw | lifePoints = newLifePoints }
+                            in
+                            DrewCardNormally { newCommonState = newCommonState, newFightArea = newFightArea }
 
 
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
