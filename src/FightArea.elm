@@ -87,9 +87,19 @@ playCard card (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
     FightArea enemy (toPlayedCard card :: cards) phaseMinusOne freeCardsDrawn
 
 
+isStopDrawingCard : PlayedCard -> Bool
+isStopDrawingCard playedCard =
+    case playedCard of
+        AbilityCard playerCard _ _ ->
+            PlayerCard.getAbility playerCard == StopDrawing
+
+        _ ->
+            False
+
+
 attemptPlayFreeCard : PlayerCard -> Int -> FightArea a -> Maybe (FightArea a)
 attemptPlayFreeCard card freeCardLimit (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
-    if freeCardsDrawn < freeCardLimit then
+    if freeCardsDrawn < freeCardLimit && not (List.any isStopDrawingCard cards) then
         Just (FightArea enemy (toPlayedCard card :: cards) phaseMinusOne (freeCardsDrawn + 1))
 
     else
