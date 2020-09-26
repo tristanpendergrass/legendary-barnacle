@@ -1,4 +1,13 @@
-module PlayerDeck exposing (PlayerDeck, create, discard, draw, putOnBottom, putOnTop)
+module PlayerDeck exposing
+    ( PlayerDeck
+    , create
+    , discard
+    , discardPileCount
+    , draw
+    , drawPileCount
+    , putOnBottom
+    , putOnTop
+    )
 
 import AgingCard exposing (AgingCard)
 import PlayerCard exposing (PlayerCard)
@@ -62,6 +71,16 @@ putOnTop cards (PlayerDeck drawPile discardPile agingCards) =
 putOnBottom : PlayerCard -> PlayerDeck -> PlayerDeck
 putOnBottom card (PlayerDeck drawPile discardPile agingCard) =
     PlayerDeck (List.append drawPile [ card ]) discardPile agingCard
+
+
+drawPileCount : PlayerDeck -> Int
+drawPileCount (PlayerDeck deck _ _) =
+    List.length deck
+
+
+discardPileCount : PlayerDeck -> Int
+discardPileCount (PlayerDeck _ discardPile _) =
+    List.length discardPile
 
 
 

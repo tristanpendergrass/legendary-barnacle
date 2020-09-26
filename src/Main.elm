@@ -6,7 +6,7 @@ import FightArea exposing (FightArea)
 import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import HazardDeck exposing (HazardDeck)
-import Html exposing (Html, a, button, div, span, text)
+import Html exposing (Html, a, button, div, h1, h2, h3, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import LifePoints
@@ -1007,31 +1007,96 @@ subscriptions _ =
 -- VIEW
 
 
+renderPhase : Phase -> Html Msg
+renderPhase phase =
+    case phase of
+        PhaseGreen ->
+            ul []
+                [ li [ class "text-green-600 font-bold text-lg" ] [ text "Green  ← " ]
+                , li [ class "text-yellow-500 text-lg" ] [ text "Yellow" ]
+                , li [ class "text-red-600 text-lg" ] [ text "Red" ]
+                ]
+
+        PhaseYellow ->
+            ul []
+                [ li [ class "text-lg" ] [ text "Green" ]
+                , li [ class "font-bold text-lg" ] [ text "Yellow  ← " ]
+                , li [ class "text-lg" ] [ text "Red" ]
+                ]
+
+        PhaseRed ->
+            ul []
+                [ li [ class "text-lg" ] [ text "Green" ]
+                , li [ class "text-lg" ] [ text "Yellow" ]
+                , li [ class "font-bold text-lg" ] [ text "Red  ← " ]
+                ]
+
+
+renderDrawPile : Int -> Html Msg
+renderDrawPile count =
+    div [ class "flex items-end space-x-2" ]
+        [ div [ class "border border-black rounded w-10 h-16 bg-blue-300 mt-1" ] []
+        , div [] [ text ("x " ++ String.fromInt count) ]
+        ]
+
+
+renderDiscardPile : Int -> Html Msg
+renderDiscardPile count =
+    div [ class "flex items-end space-x-2" ]
+        [ div [ class "border border-blue-300 border-dashed rounded w-10 h-16 mt-1" ] []
+        , div [] [ text ("x " ++ String.fromInt count) ]
+        ]
+
+
+renderCommonState : CommonState -> Html Msg
+renderCommonState commonState =
+    div [ class "flex flex-col bg-gray-900 w-1/5 rounded shadow p-4 space-y-12" ]
+        [ div [ class "flex flex-col" ]
+            [ span [ class "text-sm" ] [ text "Health" ]
+            , span []
+                [ span [ class "text-4xl font-bold leading-8 tracking-wide" ] [ text (String.fromInt (LifePoints.getValue commonState.lifePoints)) ]
+                , span [] [ text " / 22" ]
+                ]
+            ]
+        , div [ class "flex flex-col" ]
+            [ span [ class "text-sm" ] [ text "Robinson Deck" ]
+            , renderDrawPile (PlayerDeck.drawPileCount commonState.playerDeck)
+            , span [ class "text-sm mt-2" ] [ text "Robinson Discard" ]
+            , renderDiscardPile (PlayerDeck.discardPileCount commonState.playerDeck)
+            ]
+        , div [ class "flex flex-col" ]
+            [ span [ class "text-sm" ] [ text "Phase" ]
+            , renderPhase commonState.phase
+            ]
+        ]
+
+
+renderHazardSelection : CommonState -> OneOrTwo HazardCard -> Html Msg
+renderHazardSelection commonState hazardOption =
+    div [ class "flex flex-row flex-grow" ]
+        [ renderCommonState commonState
+        ]
+
+
 view : Model -> Html Msg
 view model =
-    case model of
-        GameOver ->
-            div [ class "m-6 text-xl" ] [ text "Game over" ]
+    div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
+        [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
+            [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
+                [ h1 [ class "text-2xl font-semibold" ] [ text "Friday" ]
+                , h3 [ class "pl-6" ]
+                    [ span [ class "line-through" ] [ text "Partially" ]
+                    , span [] [ text " Fully functional" ]
+                    ]
+                ]
+            , case model of
+                GameOver ->
+                    h2 [ class "text-xl" ] [ text "Game over" ]
 
-        GameInProgress gameState ->
-            case gameState of
-                HazardSelection _ (Two leftHazard rightHazard) ->
-                    div []
-                        [ div [ class "m-6 text-xl" ] [ text "Decide Hazard" ]
-                        , div [ class "m-6 flex" ]
-                            [ button [ class "inline-block mr-4", onClick ChooseLeftHazard ] [ text "left" ]
-                            , button [ class "inline-block mr-4", onClick ChooseRightHazard ] [ text "right" ]
-                            ]
-                        ]
+                GameInProgress (HazardSelection commonState hazardOption) ->
+                    renderHazardSelection commonState hazardOption
 
-                HazardSelection _ (One hazard) ->
-                    div []
-                        [ div [ class "m-6 text-xl" ] [ text "Decide Hazard" ]
-                        , div [ class "m-6 flex" ]
-                            [ button [ class "inline-block mr-4", onClick ChooseSingleHazard ] [ text "Choose hazard" ]
-                            , button [ class "inline-block mr-4", onClick ChooseSkipHazard ] [ text "Skip hazard" ]
-                            ]
-                        ]
-
-                _ ->
-                    div [ class "m-6 text-xl" ] [ text "Stage not supported" ]
+                GameInProgress _ ->
+                    h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
+            ]
+        ]
