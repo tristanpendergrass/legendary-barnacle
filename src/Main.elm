@@ -6,8 +6,8 @@ import FightArea exposing (FightArea)
 import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import HazardDeck exposing (HazardDeck)
-import Html exposing (Html, a, button, div, h1, h2, h3, li, span, text, ul)
-import Html.Attributes exposing (class)
+import Html exposing (Html, a, button, div, h1, h2, h3, img, li, span, text, ul)
+import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
 import LifePoints
 import Phase exposing (Phase(..))
@@ -979,16 +979,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Err "Phase cannot go below Green"
 
             else
-                let
-                    phase : Phase
-                    phase =
-                        commonState.phase
-
-                    newFightArea : FightArea a
-                    newFightArea =
-                        FightArea.setPhaseMinusOne setCardUsed
-                in
-                Ok ( commonState, newFightArea, NormalFightView )
+                Ok ( commonState, FightArea.setPhaseMinusOne setCardUsed, NormalFightView )
 
         _ ->
             Debug.todo "Implement missing ability"
@@ -1032,26 +1023,43 @@ renderPhase phase =
                 ]
 
 
-renderDrawPile : Int -> Html Msg
-renderDrawPile count =
-    div [ class "flex items-end space-x-2" ]
-        [ div [ class "border border-black rounded w-10 h-16 bg-blue-300 mt-1" ] []
-        , div [] [ text ("x " ++ String.fromInt count) ]
-        ]
-
-
-renderDiscardPile : Int -> Html Msg
-renderDiscardPile count =
-    div [ class "flex items-end space-x-2" ]
-        [ div [ class "border border-blue-300 border-dashed rounded w-10 h-16 mt-1" ] []
-        , div [] [ text ("x " ++ String.fromInt count) ]
-        ]
-
-
 renderCommonState : CommonState -> Html Msg
 renderCommonState commonState =
+    let
+        renderDrawPile : Int -> Html Msg
+        renderDrawPile count =
+            div [ class "flex items-end space-x-2" ]
+                [ div [ class "border-4 border-blue-300 rounded w-10 h-16 bg-blue-600 mt-1 p-1 shadow" ] []
+                , div [] [ text ("x " ++ String.fromInt count) ]
+                ]
+
+        renderDiscardPile : Int -> Html Msg
+        renderDiscardPile count =
+            div [ class "flex items-end space-x-2" ]
+                [ div [ class "border border-blue-300 border-dashed rounded w-10 h-16 mt-1" ] []
+                , div [] [ text ("x " ++ String.fromInt count) ]
+                ]
+
+        renderHazardPile : Int -> Html Msg
+        renderHazardPile count =
+            div [ class "flex items-end space-x-2" ]
+                [ div [ class "border-4 border-orange-300 rounded w-10 h-16 bg-orange-600 mt-1 p-1 shadow" ] []
+                , div [] [ text ("x " ++ String.fromInt count) ]
+                ]
+
+        renderHazardDiscard : Int -> Html Msg
+        renderHazardDiscard count =
+            div [ class "flex items-end space-x-2" ]
+                [ div [ class "border border-orange-300 border-dashed rounded w-10 h-16 mt-1" ] []
+                , div [] [ text ("x " ++ String.fromInt count) ]
+                ]
+    in
     div [ class "flex flex-col bg-gray-900 w-1/5 rounded shadow p-4 space-y-12" ]
-        [ div [ class "flex flex-col" ]
+        [ div [ class "flex flex-col h-32 items-center justify-center border-b border-blue-100" ]
+            [ img [ class "w-24 h-24 rounded-full", src "robinson-pic.jpg" ] []
+            , div [ class "text-xl font-bold" ] [ text "Robinson" ]
+            ]
+        , div [ class "flex flex-col" ]
             [ span [ class "text-sm" ] [ text "Health" ]
             , span []
                 [ span [ class "text-4xl font-bold leading-8 tracking-wide" ] [ text (String.fromInt (LifePoints.getValue commonState.lifePoints)) ]
@@ -1065,16 +1073,28 @@ renderCommonState commonState =
             , renderDiscardPile (PlayerDeck.discardPileCount commonState.playerDeck)
             ]
         , div [ class "flex flex-col" ]
+            [ span [ class "text-sm" ] [ text "Hazard Deck" ]
+            , renderHazardPile (HazardDeck.drawPileCount commonState.hazardDeck)
+            , span [ class "text-sm mt-2" ] [ text "Hazard Discard" ]
+            , renderHazardDiscard (HazardDeck.discardPileCount commonState.hazardDeck)
+            ]
+        , div [ class "flex flex-col" ]
             [ span [ class "text-sm" ] [ text "Phase" ]
             , renderPhase commonState.phase
             ]
         ]
 
 
+renderHazardChoice : OneOrTwo HazardCard -> Html Msg
+renderHazardChoice hazardOption =
+    div [ class "flex flex-col flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ] []
+
+
 renderHazardSelection : CommonState -> OneOrTwo HazardCard -> Html Msg
 renderHazardSelection commonState hazardOption =
-    div [ class "flex flex-row flex-grow" ]
+    div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
+        , renderHazardChoice hazardOption
         ]
 
 
@@ -1083,10 +1103,10 @@ view model =
     div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
         [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
             [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
-                [ h1 [ class "text-2xl font-semibold" ] [ text "Friday" ]
+                [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
                 , h3 [ class "pl-6" ]
                     [ span [ class "line-through" ] [ text "Partially" ]
-                    , span [] [ text " Fully functional" ]
+                    , span [] [ text " Fully functional game" ]
                     ]
                 ]
             , case model of

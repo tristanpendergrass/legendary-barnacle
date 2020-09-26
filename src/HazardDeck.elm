@@ -1,4 +1,14 @@
-module HazardDeck exposing (DrawTwiceResult(..), HazardDeck, create, discard, draw, drawTwice, reshuffle)
+module HazardDeck exposing
+    ( DrawTwiceResult(..)
+    , HazardDeck
+    , create
+    , discard
+    , discardPileCount
+    , draw
+    , drawPileCount
+    , drawTwice
+    , reshuffle
+    )
 
 import HazardCard exposing (HazardCard)
 import Random
@@ -53,3 +63,13 @@ reshuffle (HazardDeck drawPile discardPile) =
     List.append discardPile drawPile
         |> Random.List.shuffle
         |> Random.map create
+
+
+drawPileCount : HazardDeck -> Int
+drawPileCount (HazardDeck drawPile _) =
+    List.length drawPile
+
+
+discardPileCount : HazardDeck -> Int
+discardPileCount (HazardDeck _ discardPile) =
+    List.length discardPile
