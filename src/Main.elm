@@ -6,7 +6,7 @@ import FightArea exposing (FightArea)
 import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import HazardDeck exposing (HazardDeck)
-import Html exposing (Html, button, div, span, text)
+import Html exposing (Html, a, button, div, span, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import LifePoints
@@ -548,48 +548,42 @@ updateGameInProgress msg gameState =
                     noOp
 
         ( UseAbility index, FightingHazard commonState fightArea NormalFightView ) ->
-            case FightArea.attemptUse index fightArea of
-                Just attemptUseResult ->
-                    let
-                        ( ability, { setCardInUse, setCardUsed } ) =
-                            attemptUseResult
-
-                        ( newCommonState, newFightArea, newFightView ) =
-                            resolveAbility
-                                { ability = ability
-                                , index = index
-                                , setCardInUse = setCardInUse
-                                , setCardUsed = setCardUsed
-                                , commonState = commonState
-                                , fightArea = fightArea
-                                }
-                    in
-                    ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
-
-                Nothing ->
-                    noOp
+            FightArea.attemptUse index fightArea
+                |> Result.andThen
+                    (\( ability, { setCardInUse, setCardUsed } ) ->
+                        attemptResolveAbility
+                            { ability = ability
+                            , index = index
+                            , setCardInUse = setCardInUse
+                            , setCardUsed = setCardUsed
+                            , commonState = commonState
+                            , fightArea = fightArea
+                            }
+                    )
+                |> Result.map
+                    (\( newCommonState, newFightArea, newFightView ) ->
+                        ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+                    )
+                |> Result.withDefault noOp
 
         ( UseAbility index, FinalShowdown commonState fightArea NormalFightView ) ->
-            case FightArea.attemptUse index fightArea of
-                Just attemptUseResult ->
-                    let
-                        ( ability, { setCardInUse, setCardUsed } ) =
-                            attemptUseResult
-
-                        ( newCommonState, newFightArea, newFightView ) =
-                            resolveAbility
-                                { ability = ability
-                                , index = index
-                                , setCardInUse = setCardInUse
-                                , setCardUsed = setCardUsed
-                                , commonState = commonState
-                                , fightArea = fightArea
-                                }
-                    in
-                    ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
-
-                Nothing ->
-                    noOp
+            FightArea.attemptUse index fightArea
+                |> Result.andThen
+                    (\( ability, { setCardInUse, setCardUsed } ) ->
+                        attemptResolveAbility
+                            { ability = ability
+                            , index = index
+                            , setCardInUse = setCardInUse
+                            , setCardUsed = setCardUsed
+                            , commonState = commonState
+                            , fightArea = fightArea
+                            }
+                    )
+                |> Result.map
+                    (\( newCommonState, newFightArea, newFightView ) ->
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+                    )
+                |> Result.withDefault noOp
 
         ( CancelAbilitiesInUse, FightingHazard commonState fightArea SelectCopyView ) ->
             ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
@@ -698,48 +692,42 @@ updateGameInProgress msg gameState =
                     noOp
 
         ( SelectCopy index, FightingHazard commonState fightArea SelectCopyView ) ->
-            case FightArea.attemptUse index fightArea of
-                Just attemptUseResult ->
-                    let
-                        ( ability, _ ) =
-                            attemptUseResult
-
-                        ( newCommonState, newFightArea, newFightView ) =
-                            resolveAbility
-                                { ability = ability
-                                , index = index
-                                , setCardInUse = fightArea
-                                , setCardUsed = fightArea
-                                , commonState = commonState
-                                , fightArea = fightArea
-                                }
-                    in
-                    ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
-
-                Nothing ->
-                    noOp
+            FightArea.attemptUse index fightArea
+                |> Result.andThen
+                    (\( ability, _ ) ->
+                        attemptResolveAbility
+                            { ability = ability
+                            , index = index
+                            , setCardInUse = fightArea
+                            , setCardUsed = fightArea
+                            , commonState = commonState
+                            , fightArea = fightArea
+                            }
+                    )
+                |> Result.map
+                    (\( newCommonState, newFightArea, newFightView ) ->
+                        ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+                    )
+                |> Result.withDefault noOp
 
         ( SelectCopy index, FinalShowdown commonState fightArea SelectCopyView ) ->
-            case FightArea.attemptUse index fightArea of
-                Just attemptUseResult ->
-                    let
-                        ( ability, _ ) =
-                            attemptUseResult
-
-                        ( newCommonState, newFightArea, newFightView ) =
-                            resolveAbility
-                                { ability = ability
-                                , index = index
-                                , setCardInUse = fightArea
-                                , setCardUsed = fightArea
-                                , commonState = commonState
-                                , fightArea = fightArea
-                                }
-                    in
-                    ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
-
-                Nothing ->
-                    noOp
+            FightArea.attemptUse index fightArea
+                |> Result.andThen
+                    (\( ability, _ ) ->
+                        attemptResolveAbility
+                            { ability = ability
+                            , index = index
+                            , setCardInUse = fightArea
+                            , setCardUsed = fightArea
+                            , commonState = commonState
+                            , fightArea = fightArea
+                            }
+                    )
+                |> Result.map
+                    (\( newCommonState, newFightArea, newFightView ) ->
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+                    )
+                |> Result.withDefault noOp
 
         ( SelectDouble index, FightingHazard commonState fightArea SelectDoubleView ) ->
             case FightArea.attemptDouble index fightArea of
@@ -944,8 +932,8 @@ type alias ResolveAbilityArg a =
     }
 
 
-resolveAbility : ResolveAbilityArg a -> ( CommonState, FightArea a, FightView )
-resolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightArea } =
+attemptResolveAbility : ResolveAbilityArg a -> Result String ( CommonState, FightArea a, FightView )
+attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightArea } =
     case ability of
         PlusOneLife ->
             let
@@ -961,38 +949,46 @@ resolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightAr
                 newFightArea =
                     setCardUsed
             in
-            ( newCommonState, newFightArea, NormalFightView )
+            Ok ( newCommonState, newFightArea, NormalFightView )
 
         SortThree ->
             case drawCard commonState of
                 Nothing ->
-                    ( commonState, fightArea, NormalFightView )
+                    Err "Must be able to draw card"
 
                 Just ( drawnCard, newCommonState ) ->
-                    ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
+                    Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
         Copy ->
-            ( commonState, setCardInUse, SelectCopyView )
+            Ok ( commonState, setCardInUse, SelectCopyView )
 
         Double ->
-            ( commonState, setCardInUse, SelectDoubleView )
+            Ok ( commonState, setCardInUse, SelectDoubleView )
 
         BelowTheStack ->
-            ( commonState, setCardInUse, SelectBelowTheStackView index )
+            Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
         ExchangeTwo ->
-            ( commonState, setCardInUse, SelectExchangeView index True )
+            Ok ( commonState, setCardInUse, SelectExchangeView index True )
 
         Destroy ->
-            ( commonState, setCardInUse, SelectDestroyView index )
+            Ok ( commonState, setCardInUse, SelectDestroyView index )
 
         PhaseMinusOne ->
-            let
-                newFightArea : FightArea a
-                newFightArea =
-                    FightArea.setPhaseMinusOne setCardUsed
-            in
-            ( commonState, newFightArea, NormalFightView )
+            if commonState.phase == PhaseGreen then
+                Err "Phase cannot go below Green"
+
+            else
+                let
+                    phase : Phase
+                    phase =
+                        commonState.phase
+
+                    newFightArea : FightArea a
+                    newFightArea =
+                        FightArea.setPhaseMinusOne setCardUsed
+                in
+                Ok ( commonState, newFightArea, NormalFightView )
 
         _ ->
             Debug.todo "Implement missing ability"

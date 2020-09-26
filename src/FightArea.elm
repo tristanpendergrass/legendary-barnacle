@@ -19,7 +19,7 @@ module FightArea exposing
     , undoAllInUse
     )
 
-import FightStats exposing (SpecialAbility)
+import FightStats exposing (SpecialAbility(..))
 import List.Extra
 import Phase exposing (Phase(..))
 import PlayerCard exposing (PlayerCard)
@@ -91,7 +91,10 @@ isStopDrawingCard : PlayedCard -> Bool
 isStopDrawingCard playedCard =
     case playedCard of
         AbilityCard playerCard _ _ ->
-            PlayerCard.getAbility playerCard == StopDrawing
+            playerCard
+                |> PlayerCard.getAbility
+                |> Maybe.map ((==) StopDrawing)
+                |> Maybe.withDefault False
 
         _ ->
             False
@@ -221,18 +224,20 @@ setUsed card =
             card
 
 
-attemptUse : Int -> FightArea a -> Maybe ( SpecialAbility, { setCardInUse : FightArea a, setCardUsed : FightArea a } )
+attemptUse : Int -> FightArea a -> Result String ( SpecialAbility, { setCardInUse : FightArea a, setCardUsed : FightArea a } )
 attemptUse index (FightArea enemy playedCards phaseMinusOne freeCardsDrawn) =
     List.Extra.getAt index playedCards
         |> Maybe.andThen getCardWithUnusedAbility
         |> Maybe.map
             (\( playedCard, ability ) ->
-                ( ability
-                , { setCardInUse = FightArea enemy (replaceAtIndex index playedCards (setInUse playedCard)) phaseMinusOne freeCardsDrawn
-                  , setCardUsed = FightArea enemy (replaceAtIndex index playedCards (setUsed playedCard)) phaseMinusOne freeCardsDrawn
-                  }
-                )
+                Ok
+                    ( ability
+                    , { setCardInUse = FightArea enemy (replaceAtIndex index playedCards (setInUse playedCard)) phaseMinusOne freeCardsDrawn
+                      , setCardUsed = FightArea enemy (replaceAtIndex index playedCards (setUsed playedCard)) phaseMinusOne freeCardsDrawn
+                      }
+                    )
             )
+        |> Maybe.withDefault (Err "Can't use card")
 
 
 setInUseToUsed : FightArea a -> FightArea a

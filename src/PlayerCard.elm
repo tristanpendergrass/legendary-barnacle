@@ -7,7 +7,6 @@ module PlayerCard exposing
     , getStrength
     , hasAbility
     , isAgingCard
-    , isStopDrawingCard
     )
 
 import AgingCard exposing (AgingCard)
