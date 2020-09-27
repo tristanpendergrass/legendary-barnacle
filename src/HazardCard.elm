@@ -1,9 +1,19 @@
-module HazardCard exposing (HazardCard, getAbility, getDummy, getFreeCards, getGreenValue, getInitial, getRedValue, getStrength, getYellowValue, hasAbility)
+module HazardCard exposing
+    ( HazardCard
+    , getAbility
+    , getDummy
+    , getFreeCards
+    , getGreenValue
+    , getInitial
+    , getRedValue
+    , getStrength
+    , getTitle
+    , getYellowValue
+    , hasAbility
+    )
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
-import Random
-import Random.List
 
 
 type HazardCard
@@ -143,23 +153,21 @@ getFreeCards (HazardCard { freeCards } _) =
     freeCards
 
 
-getFightStats : HazardCard -> FightStats
-getFightStats (HazardCard _ fightStats) =
-    fightStats
-
-
 hasAbility : HazardCard -> Bool
-hasAbility =
-    getFightStats
-        >> .specialAbility
-        >> Maybe.Extra.isJust
+hasAbility (HazardCard _ { specialAbility }) =
+    Maybe.Extra.isJust specialAbility
 
 
 getAbility : HazardCard -> Maybe SpecialAbility
-getAbility =
-    getFightStats >> .specialAbility
+getAbility (HazardCard _ { specialAbility }) =
+    specialAbility
 
 
 getStrength : HazardCard -> Int
-getStrength =
-    getFightStats >> .strength
+getStrength (HazardCard _ { strength }) =
+    strength
+
+
+getTitle : HazardCard -> String
+getTitle (HazardCard { title } _) =
+    title

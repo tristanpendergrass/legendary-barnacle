@@ -135,7 +135,7 @@ init _ =
         commonState =
             { seed = seedAfterPirateShuffle
             , lifePoints = LifePoints.createCounter 20
-            , phase = PhaseGreen
+            , phase = PhaseRed
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
@@ -1004,22 +1004,22 @@ renderPhase phase =
         PhaseGreen ->
             ul []
                 [ li [ class "text-green-600 font-bold text-lg" ] [ text "Green  ← " ]
-                , li [ class "text-yellow-500 text-lg" ] [ text "Yellow" ]
+                , li [ class "text-yellow-500 font-thin text-lg" ] [ text "Yellow" ]
                 , li [ class "text-red-600 text-lg" ] [ text "Red" ]
                 ]
 
         PhaseYellow ->
             ul []
-                [ li [ class "text-lg" ] [ text "Green" ]
-                , li [ class "font-bold text-lg" ] [ text "Yellow  ← " ]
-                , li [ class "text-lg" ] [ text "Red" ]
+                [ li [ class "text-green-600 text-lg" ] [ text "Green" ]
+                , li [ class "text-yellow-500 font-bold text-lg" ] [ text "Yellow  ← " ]
+                , li [ class "text-red-600 text-lg" ] [ text "Red" ]
                 ]
 
         PhaseRed ->
             ul []
-                [ li [ class "text-lg" ] [ text "Green" ]
-                , li [ class "text-lg" ] [ text "Yellow" ]
-                , li [ class "font-bold text-lg" ] [ text "Red  ← " ]
+                [ li [ class "text-green-600 font-thin text-lg" ] [ text "Green" ]
+                , li [ class "text-yellow-500 font-thin text-lg" ] [ text "Yellow" ]
+                , li [ class "text-red-600 font-bold text-lg" ] [ text "Red  ← " ]
                 ]
 
 
@@ -1085,16 +1085,82 @@ renderCommonState commonState =
         ]
 
 
-renderHazardChoice : OneOrTwo HazardCard -> Html Msg
-renderHazardChoice hazardOption =
-    div [ class "flex flex-col flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ] []
+renderHazard : Phase -> HazardCard -> Html Msg
+renderHazard phase hazardCard =
+    div [ class "flex flex-col bg-orange-300 h-32 w-64 p-2 border-8 border-orange-600 rounded border-white text-orange-800" ]
+        [ div [ class "font-bold mb-2" ] [ text (HazardCard.getTitle hazardCard) ]
+        , div [ class "flex items-center mb-1" ]
+            [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
+            , case phase of
+                PhaseGreen ->
+                    div [ class "bg-green-600 text-gray-100 border-gray-10 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                        [ text <| String.fromInt <| HazardCard.getGreenValue hazardCard
+                        ]
+
+                PhaseYellow ->
+                    div [ class "bg-yellow-500 text-gray-100 border-gray-100 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                        [ text <| String.fromInt <| HazardCard.getYellowValue hazardCard
+                        ]
+
+                PhaseRed ->
+                    div [ class "bg-red-600 text-gray-100 border-gray-100 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                        [ text <| String.fromInt <| HazardCard.getRedValue hazardCard
+                        ]
+            ]
+        , div [ class "flex items-center" ]
+            [ div [ class "text-sm mr-2" ] [ text "Free cards: " ]
+            , div [ class "bg-gray-100 text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                [ text <| String.fromInt <| HazardCard.getFreeCards hazardCard
+                ]
+            ]
+        ]
+
+
+renderHazardChoice : Phase -> OneOrTwo HazardCard -> Html Msg
+renderHazardChoice phase hazardOption =
+    let
+        renderChooseButton : String -> Msg -> Html Msg
+        renderChooseButton buttonLabel handleClick =
+            button [ class "bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick handleClick ]
+                [ text buttonLabel
+                ]
+    in
+    div [ class "flex flex-col flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+        [ div [ class "flex flex-col h-32 items-center justify-center" ]
+            [ div [ class "text-3xl font-bold" ] [ text "Choose Hazard" ]
+            ]
+        , case hazardOption of
+            Two leftHazard rightHazard ->
+                div [ class "flex justify-center space-x-24" ]
+                    [ div [ class "flex flex-col items-center space-y-4" ]
+                        [ renderHazard phase leftHazard
+                        , renderChooseButton "Choose" ChooseLeftHazard
+                        ]
+                    , div [ class "flex flex-col items-center space-y-4" ]
+                        [ renderHazard phase rightHazard
+                        , renderChooseButton "Choose" ChooseRightHazard
+                        ]
+                    ]
+
+            One hazard ->
+                div [ class "flex justify-center space-x-24" ]
+                    [ div [ class "flex flex-col items-center space-y-4" ]
+                        -- TODO: test this
+                        [ renderHazard phase hazard
+                        , renderChooseButton "Choose" ChooseSingleHazard
+                        ]
+                    , div [ class "flex flex-col items-center space-y-4" ]
+                        [ renderChooseButton "Skip" ChooseSkipHazard
+                        ]
+                    ]
+        ]
 
 
 renderHazardSelection : CommonState -> OneOrTwo HazardCard -> Html Msg
 renderHazardSelection commonState hazardOption =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
-        , renderHazardChoice hazardOption
+        , renderHazardChoice commonState.phase hazardOption
         ]
 
 
