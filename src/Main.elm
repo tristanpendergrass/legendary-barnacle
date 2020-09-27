@@ -1000,6 +1000,34 @@ subscriptions _ =
 -- VIEW
 
 
+view : Model -> Html Msg
+view model =
+    div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
+        [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
+            [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
+                [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
+                , h3 [ class "pl-6" ]
+                    [ span [ class "line-through" ] [ text "Partially" ]
+                    , span [] [ text " Fully functional game" ]
+                    ]
+                ]
+            , case model of
+                GameOver ->
+                    h2 [ class "text-xl" ] [ text "Game over" ]
+
+                GameInProgress (HazardSelection commonState hazardOption) ->
+                    renderHazardSelection commonState hazardOption
+
+                GameInProgress _ ->
+                    h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
+            ]
+        ]
+
+
+
+-- Common
+
+
 renderPhase : Phase -> Html Msg
 renderPhase phase =
     case phase of
@@ -1122,6 +1150,10 @@ renderHazard phase hazardCard =
         ]
 
 
+
+-- HazardSelection
+
+
 renderHazardChoice : Phase -> OneOrTwo HazardCard -> Html Msg
 renderHazardChoice phase hazardOption =
     let
@@ -1167,28 +1199,4 @@ renderHazardSelection commonState hazardOption =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , renderHazardChoice commonState.phase hazardOption
-        ]
-
-
-view : Model -> Html Msg
-view model =
-    div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
-        [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
-            [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
-                [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
-                , h3 [ class "pl-6" ]
-                    [ span [ class "line-through" ] [ text "Partially" ]
-                    , span [] [ text " Fully functional game" ]
-                    ]
-                ]
-            , case model of
-                GameOver ->
-                    h2 [ class "text-xl" ] [ text "Game over" ]
-
-                GameInProgress (HazardSelection commonState hazardOption) ->
-                    renderHazardSelection commonState hazardOption
-
-                GameInProgress _ ->
-                    h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
-            ]
         ]
