@@ -145,7 +145,9 @@ init _ =
 
         hazardSelectionState : OneOrTwo HazardCard
         hazardSelectionState =
-            Two leftHazard rightHazard
+            One leftHazard
+
+        -- Two leftHazard rightHazard
     in
     ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
 
@@ -1087,7 +1089,7 @@ renderCommonState commonState =
 
 renderHazard : Phase -> HazardCard -> Html Msg
 renderHazard phase hazardCard =
-    div [ class "flex flex-col bg-orange-300 h-32 w-64 p-2 border-8 border-orange-600 rounded border-white text-orange-800" ]
+    div [ class "flex flex-col bg-orange-300 h-32 w-64 p-2 border-8 border-orange-600 rounded border-white text-orange-800 relative" ]
         [ div [ class "font-bold mb-2" ] [ text (HazardCard.getTitle hazardCard) ]
         , div [ class "flex items-center mb-1" ]
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
@@ -1113,6 +1115,10 @@ renderHazard phase hazardCard =
                 [ text <| String.fromInt <| HazardCard.getFreeCards hazardCard
                 ]
             ]
+
+        -- TODO: implement view reward after renderFightingCard is implemented
+        -- TODO: Switch this text out for an icon button
+        , button [ class "absolute bottom-0 right-0" ] [ text "View Reward" ]
         ]
 
 
@@ -1145,12 +1151,12 @@ renderHazardChoice phase hazardOption =
             One hazard ->
                 div [ class "flex justify-center space-x-24" ]
                     [ div [ class "flex flex-col items-center space-y-4" ]
-                        -- TODO: test this
                         [ renderHazard phase hazard
                         , renderChooseButton "Choose" ChooseSingleHazard
                         ]
                     , div [ class "flex flex-col items-center space-y-4" ]
-                        [ renderChooseButton "Skip" ChooseSkipHazard
+                        [ div [ class "invisible" ] [ renderHazard phase hazard ]
+                        , renderChooseButton "Skip" ChooseSkipHazard
                         ]
                     ]
         ]
