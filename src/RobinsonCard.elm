@@ -1,4 +1,4 @@
-module RobinsonCard exposing (RobinsonCard, getAbility, getInitial, getStrength, hasAbility)
+module RobinsonCard exposing (RobinsonCard, getAbility, getInitial, getStrength, getTitle, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -67,3 +67,8 @@ getAbility =
 getStrength : RobinsonCard -> Int
 getStrength =
     getFightStats >> .strength
+
+
+getTitle : RobinsonCard -> String
+getTitle =
+    getFightStats >> .title

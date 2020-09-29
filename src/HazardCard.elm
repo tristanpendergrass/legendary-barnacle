@@ -1,5 +1,6 @@
 module HazardCard exposing
     ( HazardCard
+    , getFightingTitle
     , getAbility
     , getDummy
     , getFreeCards
@@ -168,4 +169,9 @@ getStrength (HazardCard _ { strength }) =
 
 getTitle : HazardCard -> String
 getTitle (HazardCard { title } _) =
+    title
+
+
+getFightingTitle : HazardCard -> String
+getFightingTitle (HazardCard _ { title }) =
     title

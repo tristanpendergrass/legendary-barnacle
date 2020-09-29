@@ -1054,7 +1054,7 @@ renderCommonState commonState =
                 , div [] [ text ("x " ++ String.fromInt count) ]
                 ]
     in
-    div [ class "flex flex-col bg-gray-900 w-1/5 rounded shadow p-4 space-y-12" ]
+    div [ class leftColClasses ]
         [ div [ class "flex flex-col h-32 items-center justify-center border-b border-blue-100" ]
             [ img [ class "w-24 h-24 rounded-full", src "robinson-pic.jpg" ] []
             , div [ class "text-xl font-bold" ] [ text "Robinson" ]
@@ -1133,7 +1133,7 @@ renderHazardChoice phase hazardOption =
                 [ text buttonLabel
                 ]
     in
-    div [ class "flex flex-col flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+    div [ class rightColClasses ]
         [ div [ class "flex flex-col h-32 items-center justify-center" ]
             [ div [ class "text-3xl font-bold" ] [ text "Choose Hazard" ]
             ]
@@ -1189,61 +1189,92 @@ getHazardStrength phase hazard =
             HazardCard.getRedValue hazard
 
 
+renderFightDash : FightArea HazardCard -> Phase -> Html Msg
+renderFightDash fightArea phase =
+    div [ class "flex items-center justify-between" ]
+        [ div [ class "flex flex-col items-start space-y-4 px-8" ]
+            [ div [ class "flex" ]
+                [ div [ class "flex items-end" ]
+                    [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
+                    , span [ class "text-3xl font-bold mr-1 leading-none" ]
+                        [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
+                    , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
+                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
+                    , span [ class "leading-none" ] [ text "free cards drawn" ]
+                    ]
+                ]
+            , div [ class "flex" ]
+                [ div [ class "flex items-end" ]
+                    [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
+                    , span [ class "text-3xl font-bold mr-1 leading-none" ]
+                        [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
+                    , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
+                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (getHazardStrength phase (FightArea.getEnemy fightArea)) ]
+                    , span [ class "leading-none" ] [ text "total strength" ]
+                    ]
+                ]
+            ]
+        , div []
+            [ renderHazard phase (FightArea.getEnemy fightArea) ]
+
+        -- Below is an invisible copy of earlier button cluster for purposes of centering the hazard card using justify-between
+        , div [ class "invisible flex flex-col items-start space-y-4 px-8" ]
+            [ div [ class "flex" ]
+                [ div [ class "flex items-end" ]
+                    [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
+                    , span [ class "text-3xl font-bold mr-1 leading-none" ]
+                        [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
+                    , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
+                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
+                    , span [ class "leading-none" ] [ text "free cards drawn" ]
+                    ]
+                ]
+            , button [ class "inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
+            ]
+        ]
+
+
+renderPlayerCard : PlayerCard -> Html Msg
+renderPlayerCard playerCard =
+    div [ class "mr-4 mb-4 flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
+        [ div [ class "font-bold mb-2" ] [ text (PlayerCard.getTitle playerCard) ]
+        , div [ class "flex items-center mb-1" ]
+            [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
+            , div [ class "bg-white text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                [ text <| String.fromInt <| PlayerCard.getStrength playerCard
+                ]
+            ]
+
+        -- TODO: print special ability
+        ]
+
+
 renderFightingHazard : CommonState -> FightArea HazardCard -> FightView -> Html Msg
 renderFightingHazard commonState fightArea fightView =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
-        , div [ class "flex flex-col flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+        , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
-            , div [ class "flex items-center justify-between" ]
-                [ div [ class "flex flex-col items-start space-y-4 px-8" ]
-                    [ div [ class "flex" ]
-                        [ div [ class "flex items-end" ]
-                            [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
-                            , span [ class "text-3xl font-bold mr-1 leading-none" ]
-                                [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
-                            , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                            , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
-                            , span [ class "leading-none" ] [ text "free cards drawn" ]
-                            ]
-                        ]
-                    , div [ class "flex" ]
-                        [ div [ class "flex items-end" ]
-                            [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
-                            , span [ class "text-3xl font-bold mr-1 leading-none" ]
-                                [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
-                            , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                            , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (getHazardStrength commonState.phase (FightArea.getEnemy fightArea)) ]
-                            , span [ class "leading-none" ] [ text "strength" ]
-                            ]
-                        ]
-                    ]
-                , div []
-                    [ renderHazard commonState.phase (FightArea.getEnemy fightArea) ]
-
-                -- Below is an invisible copy of earlier button cluster for purposes of centering the hazard card using justify-between
-                , div [ class "invisible flex flex-col items-start space-y-4 px-8" ]
-                    [ div [ class "flex" ]
-                        [ div [ class "flex items-end" ]
-                            [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
-                            , span [ class "text-3xl font-bold mr-1 leading-none" ]
-                                [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
-                            , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                            , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
-                            , span [ class "leading-none" ] [ text "free cards drawn" ]
-                            ]
-                        ]
-                    , button [ class "inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
-                    ]
-                ]
+            , renderFightDash fightArea commonState.phase
+            , div [ class "flex flex-wrap" ] (List.map renderPlayerCard (FightArea.getCards fightArea))
             ]
         ]
 
 
 
 -- VIEW
+
+
+leftColClasses : String
+leftColClasses =
+    "flex flex-col bg-gray-900 w-1/5 rounded shadow p-4 space-y-12"
+
+
+rightColClasses : String
+rightColClasses =
+    "flex flex-col w-4/5 bg-gray-900 rounded shadow p-4 space-y-12"
 
 
 view : Model -> Html Msg

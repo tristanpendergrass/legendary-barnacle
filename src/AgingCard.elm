@@ -1,4 +1,4 @@
-module AgingCard exposing (AgingCard, getAbility, getInitial, getStrength, hasAbility)
+module AgingCard exposing (AgingCard, getAbility, getInitial, getStrength, getTitle, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -113,3 +113,8 @@ getAbility =
 getStrength : AgingCard -> Int
 getStrength =
     getFightStats >> .strength
+
+
+getTitle : AgingCard -> String
+getTitle =
+    getFightStats >> .title
