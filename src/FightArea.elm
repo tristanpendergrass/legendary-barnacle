@@ -9,6 +9,7 @@ module FightArea exposing
     , getCard
     , getCards
     , getEnemy
+    , getFreeCardsDrawn
     , getPlayerStrength
     , hasUnusedAgingCards
     , isPhaseMinusOne
@@ -362,3 +363,8 @@ setPhaseMinusOne (FightArea enemy cards _ freeCardsDrawn) =
 isPhaseMinusOne : FightArea a -> Bool
 isPhaseMinusOne (FightArea _ _ phaseMinusOne _) =
     phaseMinusOne
+
+
+getFreeCardsDrawn : FightArea a -> Int
+getFreeCardsDrawn (FightArea _ _ _ freeCards) =
+    freeCards

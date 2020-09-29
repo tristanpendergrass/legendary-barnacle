@@ -145,9 +145,7 @@ init _ =
 
         hazardSelectionState : OneOrTwo HazardCard
         hazardSelectionState =
-            One leftHazard
-
-        -- Two leftHazard rightHazard
+            Two leftHazard rightHazard
     in
     ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
 
@@ -997,34 +995,6 @@ subscriptions _ =
 
 
 
--- VIEW
-
-
-view : Model -> Html Msg
-view model =
-    div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
-        [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
-            [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
-                [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
-                , h3 [ class "pl-6" ]
-                    [ span [ class "line-through" ] [ text "Partially" ]
-                    , span [] [ text " Fully functional game" ]
-                    ]
-                ]
-            , case model of
-                GameOver ->
-                    h2 [ class "text-xl" ] [ text "Game over" ]
-
-                GameInProgress (HazardSelection commonState hazardOption) ->
-                    renderHazardSelection commonState hazardOption
-
-                GameInProgress _ ->
-                    h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
-            ]
-        ]
-
-
-
 -- Common
 
 
@@ -1199,4 +1169,105 @@ renderHazardSelection commonState hazardOption =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , renderHazardChoice commonState.phase hazardOption
+        ]
+
+
+
+-- FightingHazard
+
+
+getHazardStrength : Phase -> HazardCard -> Int
+getHazardStrength phase hazard =
+    case phase of
+        PhaseGreen ->
+            HazardCard.getGreenValue hazard
+
+        PhaseYellow ->
+            HazardCard.getYellowValue hazard
+
+        PhaseRed ->
+            HazardCard.getRedValue hazard
+
+
+renderFightingHazard : CommonState -> FightArea HazardCard -> FightView -> Html Msg
+renderFightingHazard commonState fightArea fightView =
+    div [ class "flex flex-row flex-grow space-x-8" ]
+        [ renderCommonState commonState
+        , div [ class "flex flex-col flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+            [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
+                ]
+            , div [ class "flex items-center justify-between" ]
+                [ div [ class "flex flex-col items-start space-y-4 px-8" ]
+                    [ div [ class "flex" ]
+                        [ div [ class "flex items-end" ]
+                            [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
+                            , span [ class "text-3xl font-bold mr-1 leading-none" ]
+                                [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
+                            , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
+                            , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
+                            , span [ class "leading-none" ] [ text "free cards drawn" ]
+                            ]
+                        ]
+                    , div [ class "flex" ]
+                        [ div [ class "flex items-end" ]
+                            [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
+                            , span [ class "text-3xl font-bold mr-1 leading-none" ]
+                                [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
+                            , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
+                            , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (getHazardStrength commonState.phase (FightArea.getEnemy fightArea)) ]
+                            , span [ class "leading-none" ] [ text "strength" ]
+                            ]
+                        ]
+                    ]
+                , div []
+                    [ renderHazard commonState.phase (FightArea.getEnemy fightArea) ]
+
+                -- Below is an invisible copy of earlier button cluster for purposes of centering the hazard card using justify-between
+                , div [ class "invisible flex flex-col items-start space-y-4 px-8" ]
+                    [ div [ class "flex" ]
+                        [ div [ class "flex items-end" ]
+                            [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
+                            , span [ class "text-3xl font-bold mr-1 leading-none" ]
+                                [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
+                            , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
+                            , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
+                            , span [ class "leading-none" ] [ text "free cards drawn" ]
+                            ]
+                        ]
+                    , button [ class "inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
+                    ]
+                ]
+            ]
+        ]
+
+
+
+-- VIEW
+
+
+view : Model -> Html Msg
+view model =
+    div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
+        [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
+            [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
+                [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
+                , h3 [ class "pl-6" ]
+                    [ span [ class "line-through" ] [ text "Partially" ]
+                    , span [] [ text " Fully functional game" ]
+                    ]
+                ]
+            , case model of
+                GameOver ->
+                    h2 [ class "text-xl" ] [ text "Game over" ]
+
+                GameInProgress (HazardSelection commonState hazardOption) ->
+                    renderHazardSelection commonState hazardOption
+
+                GameInProgress (FightingHazard commonState fightArea fightView) ->
+                    renderFightingHazard commonState fightArea fightView
+
+                GameInProgress _ ->
+                    h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
+            ]
         ]

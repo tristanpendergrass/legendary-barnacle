@@ -89,9 +89,7 @@ food =
 
 hazardCards : List HazardCard
 hazardCards =
-    [ food
-    , food
-    , HazardCard withTheRaft { title = "realization", strength = 0, specialAbility = Just Destroy }
+    [ HazardCard withTheRaft { title = "realization", strength = 0, specialAbility = Just Destroy }
     , HazardCard withTheRaft { title = "deception", strength = 0, specialAbility = Just BelowTheStack }
     , HazardCard withTheRaft { title = "mimicry", strength = 0, specialAbility = Just Copy }
     , HazardCard withTheRaft { title = "strategy", strength = 0, specialAbility = Just ExchangeTwo }
