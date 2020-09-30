@@ -7,7 +7,7 @@ import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import HazardDeck exposing (HazardDeck)
 import Html exposing (Html, a, button, div, h1, h2, h3, img, li, span, text, ul)
-import Html.Attributes exposing (class, src)
+import Html.Attributes exposing (class, src, disabled)
 import Html.Events exposing (onClick)
 import LifePoints
 import Phase exposing (Phase(..))
@@ -1234,19 +1234,52 @@ renderFightDash fightArea phase =
         ]
 
 
-renderPlayerCard : PlayerCard -> Html Msg
-renderPlayerCard playerCard =
+renderPlayerCard : PlayerCard -> Bool -> Html Msg
+renderPlayerCard playerCard isDoubled =
     div [ class "mr-4 mb-4 flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
         [ div [ class "font-bold mb-2" ] [ text (PlayerCard.getTitle playerCard) ]
         , div [ class "flex items-center mb-1" ]
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
-            , div [ class "bg-white text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
-                [ text <| String.fromInt <| PlayerCard.getStrength playerCard
-                ]
+            , if isDoubled then
+                div [ class "bg-white text-green-600 border-gray-900 border font-bold text-sm px-4 py-0 rounded-sm underline" ]
+                    [ text <| String.fromInt <| PlayerCard.getStrength playerCard
+                    ]
+            else
+                div [ class "bg-white text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                    [ text <| String.fromInt <| PlayerCard.getStrength playerCard
+                    ]
             ]
 
         -- TODO: print special ability
         ]
+
+
+renderPlayedCard : Int -> FightArea.PlayedCard -> Html Msg
+renderPlayedCard index playedCard =
+    case playedCard of
+        FightArea.NormalCard card isDoubled ->
+            div [class "flex flex-col items-center"]
+                [ renderPlayerCard card isDoubled
+                , if isDoubled then (div [] [text "Doubled"]) else div [] []
+                ]
+
+        FightArea.AbilityCard card usedState isDoubled ->
+            div [class "flex flex-col items-center"]
+                [ renderPlayerCard card isDoubled
+                , if isDoubled then (div [] [text "Doubled"]) else div [] []
+                , case (PlayerCard.getAbility card, usedState) of
+                    (Just ability, FightArea.NotUsed) ->
+                        button [onClick <| UseAbility index] [text "Use Ability"]
+
+                    (Just _, FightArea.InUse) ->
+                        div [] [text "In Use"]
+
+                    (Just ability, FightArea.Used) ->
+                        button [class "text-red-500", disabled True] [text "Use Ability"]
+
+                    (Nothing, _) ->
+                        div [] []
+                ]
 
 
 renderFightingHazard : CommonState -> FightArea HazardCard -> FightView -> Html Msg
@@ -1258,7 +1291,7 @@ renderFightingHazard commonState fightArea fightView =
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
             , renderFightDash fightArea commonState.phase
-            , div [ class "flex flex-wrap" ] (List.map renderPlayerCard (FightArea.getCards fightArea))
+            , div [ class "flex flex-wrap" ] (List.indexedMap renderPlayedCard (FightArea.getPlayedCards fightArea))
             ]
         ]
 

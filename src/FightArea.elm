@@ -1,5 +1,9 @@
 module FightArea exposing
     ( FightArea
+    , IsDoubled
+    , PlayedCard(..)
+    , UsedState(..)
+    , getPlayedCards
     , attemptDestroy
     , attemptDouble
     , attemptExchange
@@ -31,10 +35,11 @@ type UsedState
     | Used
     | InUse
 
+type alias IsDoubled = Bool
 
 type PlayedCard
-    = NormalCard PlayerCard Bool
-    | AbilityCard PlayerCard UsedState Bool
+    = NormalCard PlayerCard IsDoubled
+    | AbilityCard PlayerCard UsedState IsDoubled
 
 
 type alias PhaseMinusOne =
