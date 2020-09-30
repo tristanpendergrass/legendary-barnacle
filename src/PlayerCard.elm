@@ -15,7 +15,6 @@ import FightStats exposing (SpecialAbility)
 import HazardCard exposing (HazardCard)
 import RobinsonCard exposing (RobinsonCard)
 
-
 hasAbility : PlayerCard -> Bool
 hasAbility card =
     case card of
