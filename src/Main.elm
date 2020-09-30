@@ -64,7 +64,7 @@ type alias AndAnother =
 type FightView
     = NormalFightView
     | SortView (SortArea PlayerCard)
-    | SelectCopyView
+    | SelectCopyView Int
     | SelectDoubleView Int
     | SelectBelowTheStackView Int
     | SelectExchangeView Int AndAnother
@@ -590,10 +590,10 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.withDefault noOp
 
-        ( CancelAbilitiesInUse, FightingHazard commonState fightArea SelectCopyView ) ->
+        ( CancelAbilitiesInUse, FightingHazard commonState fightArea _) ->
             ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
-        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea SelectCopyView ) ->
+        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea _ ) ->
             ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
         ( SortFinish, FightingHazard commonState fightArea (SortView sortArea) ) ->
@@ -696,7 +696,11 @@ updateGameInProgress msg gameState =
                 _ ->
                     noOp
 
-        ( SelectCopy index, FightingHazard commonState fightArea SelectCopyView ) ->
+        ( SelectCopy index, FightingHazard commonState fightArea (SelectCopyView copyIndex) ) ->
+            if index == copyIndex then
+                noOp
+            else
+
             FightArea.attemptUse index fightArea
                 |> Result.andThen
                     (\( ability, _ ) ->
@@ -715,7 +719,10 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.withDefault noOp
 
-        ( SelectCopy index, FinalShowdown commonState fightArea SelectCopyView ) ->
+        ( SelectCopy index, FinalShowdown commonState fightArea (SelectCopyView copyIndex) ) ->
+            if index == copyIndex then
+                noOp
+            else
             FightArea.attemptUse index fightArea
                 |> Result.andThen
                     (\( ability, _ ) ->
@@ -971,7 +978,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                     Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
         Copy ->
-            Ok ( commonState, setCardInUse, SelectCopyView )
+            Ok ( commonState, setCardInUse, SelectCopyView index )
 
         Double ->
             Ok ( commonState, setCardInUse, SelectDoubleView index )
