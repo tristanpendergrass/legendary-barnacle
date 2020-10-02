@@ -7,7 +7,7 @@ import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import HazardDeck exposing (HazardDeck)
 import Html exposing (Html, a, button, div, h1, h2, h3, img, li, span, text, ul)
-import Html.Attributes exposing (class, src, disabled)
+import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
 import LifePoints
 import Phase exposing (Phase(..))
@@ -590,7 +590,7 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.withDefault noOp
 
-        ( CancelAbilitiesInUse, FightingHazard commonState fightArea _) ->
+        ( CancelAbilitiesInUse, FightingHazard commonState fightArea _ ) ->
             ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
 
         ( CancelAbilitiesInUse, FinalShowdown commonState fightArea _ ) ->
@@ -699,51 +699,53 @@ updateGameInProgress msg gameState =
         ( SelectCopy index, FightingHazard commonState fightArea (SelectCopyView copyIndex) ) ->
             if index == copyIndex then
                 noOp
-            else
 
-            FightArea.attemptUse index fightArea
-                |> Result.andThen
-                    (\( ability, _ ) ->
-                        attemptResolveAbility
-                            { ability = ability
-                            , index = index
-                            , setCardInUse = fightArea
-                            , setCardUsed = fightArea
-                            , commonState = commonState
-                            , fightArea = fightArea
-                            }
-                    )
-                |> Result.map
-                    (\( newCommonState, newFightArea, newFightView ) ->
-                        ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
-                    )
-                |> Result.withDefault noOp
+            else
+                FightArea.attemptUse index fightArea
+                    |> Result.andThen
+                        (\( ability, _ ) ->
+                            attemptResolveAbility
+                                { ability = ability
+                                , index = index
+                                , setCardInUse = fightArea
+                                , setCardUsed = fightArea
+                                , commonState = commonState
+                                , fightArea = fightArea
+                                }
+                        )
+                    |> Result.map
+                        (\( newCommonState, newFightArea, newFightView ) ->
+                            ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+                        )
+                    |> Result.withDefault noOp
 
         ( SelectCopy index, FinalShowdown commonState fightArea (SelectCopyView copyIndex) ) ->
             if index == copyIndex then
                 noOp
+
             else
-            FightArea.attemptUse index fightArea
-                |> Result.andThen
-                    (\( ability, _ ) ->
-                        attemptResolveAbility
-                            { ability = ability
-                            , index = index
-                            , setCardInUse = fightArea
-                            , setCardUsed = fightArea
-                            , commonState = commonState
-                            , fightArea = fightArea
-                            }
-                    )
-                |> Result.map
-                    (\( newCommonState, newFightArea, newFightView ) ->
-                        ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
-                    )
-                |> Result.withDefault noOp
+                FightArea.attemptUse index fightArea
+                    |> Result.andThen
+                        (\( ability, _ ) ->
+                            attemptResolveAbility
+                                { ability = ability
+                                , index = index
+                                , setCardInUse = fightArea
+                                , setCardUsed = fightArea
+                                , commonState = commonState
+                                , fightArea = fightArea
+                                }
+                        )
+                    |> Result.map
+                        (\( newCommonState, newFightArea, newFightView ) ->
+                            ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+                        )
+                    |> Result.withDefault noOp
 
         ( SelectDouble index, FightingHazard commonState fightArea (SelectDoubleView doubleIndex) ) ->
-            if (index == doubleIndex) then
+            if index == doubleIndex then
                 noOp
+
             else
                 case FightArea.attemptDouble index fightArea of
                     Just newFightArea ->
@@ -753,8 +755,9 @@ updateGameInProgress msg gameState =
                         noOp
 
         ( SelectDouble index, FinalShowdown commonState fightArea (SelectDoubleView doubleIndex) ) ->
-            if (index == doubleIndex) then
+            if index == doubleIndex then
                 noOp
+
             else
                 case FightArea.attemptDouble index fightArea of
                     Just newFightArea ->
@@ -1259,10 +1262,14 @@ renderPlayerCard playerCard isDoubled =
         , div [ class "flex items-center mb-1" ]
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
             , if isDoubled then
-                div [ class "bg-white text-green-600 border-gray-900 border font-bold text-sm px-4 py-0 rounded-sm underline" ]
-                    [ text <| String.fromInt <| PlayerCard.getStrength playerCard * 2
+                div [ class "flex items-center" ]
+                    [ div [ class "bg-white text-green-600 border-gray-900 border font-bold text-sm px-4 py-0 rounded-sm underline" ]
+                        [ text <| String.fromInt <| PlayerCard.getStrength playerCard * 2
+                        ]
+                    , div [ class "ml-2" ] [ text "*Doubled" ]
                     ]
-            else
+
+              else
                 div [ class "bg-white text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
                     [ text <| String.fromInt <| PlayerCard.getStrength playerCard
                     ]
@@ -1276,36 +1283,40 @@ renderPlayedCard : FightView -> Int -> FightArea.PlayedCard -> Html Msg
 renderPlayedCard fightView index playedCard =
     case playedCard of
         FightArea.NormalCard card isDoubled ->
-            div [class "flex flex-col items-center"]
+            div [ class "flex flex-col items-center" ]
                 [ renderPlayerCard card isDoubled
-                , if isDoubled then (div [] [text "Doubled"]) else div [] []
+                , if isDoubled then
+                    div [] [ text "Doubled" ]
+
+                  else
+                    div [] []
                 ]
 
         FightArea.AbilityCard card usedState isDoubled ->
-            div [class "flex flex-col items-center"]
+            div [ class "flex flex-col items-center" ]
                 [ renderPlayerCard card isDoubled
-                , if isDoubled then (div [] [text "Doubled"]) else div [] []
                 , case fightView of
                     NormalFightView ->
-                        case (PlayerCard.getAbility card, usedState) of
-                            (Just ability, FightArea.NotUsed) ->
-                                button [onClick <| UseAbility index] [text "Use Ability"]
+                        case ( PlayerCard.getAbility card, usedState ) of
+                            ( Just ability, FightArea.NotUsed ) ->
+                                button [ class "border border-gray-100 rounded px-2 py-1 text-gray-100", onClick <| UseAbility index ] [ text "Use Ability" ]
 
-                            (Just _, FightArea.InUse) ->
-                                div [] [text "In Use"]
+                            ( Just _, FightArea.InUse ) ->
+                                div [ class "px-2 py-1" ] [ text "In Use" ]
 
-                            (Just ability, FightArea.Used) ->
-                                button [class "text-red-500", disabled True] [text "Use Ability"]
+                            ( Just ability, FightArea.Used ) ->
+                                button [ class "border border-gray-500 rounded px-2 py-1 text-gray-500", disabled True ] [ text "Use Ability" ]
 
-                            (Nothing, _) ->
+                            ( Nothing, _ ) ->
                                 div [] []
 
                     SelectDoubleView doubleIndex ->
                         if index == doubleIndex || isDoubled then
-                            div [] [text "Can't double"]
+                            div [ class "px-2 py-1" ] [ text "Can't double" ]
 
                         else
-                            button [onClick <| SelectDouble index ] [text "Select Double"]
+                            button [ class "border border-gray-100 rounded px-2 py-1 text-gray-100", onClick <| SelectDouble index ] [ text "Select Double" ]
+
                     _ ->
                         Debug.todo "Implement missing fight view"
                 ]

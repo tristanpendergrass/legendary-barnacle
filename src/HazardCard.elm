@@ -1,14 +1,14 @@
 module HazardCard exposing
     ( HazardCard
-    , getFightingTitle
-    , getTestCards
     , getAbility
     , getDummy
+    , getFightingTitle
     , getFreeCards
     , getGreenValue
     , getInitial
     , getRedValue
     , getStrength
+    , getTestCards
     , getTitle
     , getYellowValue
     , hasAbility
@@ -35,13 +35,16 @@ type alias HazardStats =
     , hazardPhaseValues : HazardPhaseValues
     }
 
+
 getTestCards : List HazardCard
 getTestCards =
     [ HazardCard exploringTheIsland { title = "repeat", strength = 1, specialAbility = Just Double }
     , HazardCard exploringTheIsland { title = "repeat", strength = 1, specialAbility = Just Double }
+    , HazardCard exploringTheIsland { title = "repeat", strength = 1, specialAbility = Just Double }
     , food
     , food
     ]
+
 
 getGreenValue : HazardCard -> Int
 getGreenValue (HazardCard { hazardPhaseValues } _) =
