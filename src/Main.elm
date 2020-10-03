@@ -10,6 +10,7 @@ import Html exposing (Html, a, button, div, h1, h2, h3, img, li, span, text, ul)
 import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
 import LifePoints
+import Maybe.Extra
 import Phase exposing (Phase(..))
 import PirateCard exposing (PirateCard)
 import PlayerCard exposing (PlayerCard)
@@ -1210,13 +1211,17 @@ getHazardStrength phase hazard =
             HazardCard.getRedValue hazard
 
 
-renderFightDash : FightArea HazardCard -> Phase -> Html Msg
-renderFightDash fightArea phase =
+renderFightDash : Bool -> FightArea HazardCard -> Phase -> Html Msg
+renderFightDash canDraw fightArea phase =
     div [ class "flex items-center justify-between" ]
         [ div [ class "flex flex-col items-start space-y-4 px-8" ]
             [ div [ class "flex" ]
                 [ div [ class "flex items-end" ]
-                    [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick DrawNormally ] [ text "Draw" ]
+                    [ if canDraw then
+                        button [ class standardButton, onClick DrawNormally ] [ text "Draw" ]
+
+                      else
+                        button [ class disabledStandardButton, disabled True ] [ text "Draw" ]
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
@@ -1226,7 +1231,11 @@ renderFightDash fightArea phase =
                 ]
             , div [ class "flex" ]
                 [ div [ class "flex items-end" ]
-                    [ button [ class "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded", onClick EndFight ] [ text "End Fight" ]
+                    [ if FightArea.getCards fightArea |> List.isEmpty then
+                        button [ class disabledStandardButton, disabled True ] [ text "End Fight" ]
+
+                      else
+                        button [ class standardButton, onClick EndFight ] [ text "End Fight" ]
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
@@ -1274,9 +1283,36 @@ renderPlayerCard playerCard isDoubled =
                     [ text <| String.fromInt <| PlayerCard.getStrength playerCard
                     ]
             ]
+        , case PlayerCard.getAbility playerCard of
+            Just ability ->
+                div [ class "flex items-center mb-1" ]
+                    [ div [ class "text-sm mr-2" ] [ text "Ability: " ]
+                    , div [ class "text-sm" ] [ text <| FightStats.getAbilityLabel ability ]
+                    ]
 
-        -- TODO: print special ability
+            Nothing ->
+                div [] []
         ]
+
+
+standardButton : String
+standardButton =
+    "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded"
+
+
+disabledStandardButton : String
+disabledStandardButton =
+    "mr-4 inline-block bg-gray-100 opacity-50 font-bold text-gray-800 rounded py-2 px-4 rounded"
+
+
+transparentButton : String
+transparentButton =
+    "inline-block border border-gray-100 hover:bg-gray-100 hover:bg-opacity-25 rounded px-2 py-1 text-gray-100"
+
+
+disabledTransparentButton : String
+disabledTransparentButton =
+    "inline-block border border-gray-500 rounded px-2 py-1 text-gray-500"
 
 
 renderPlayedCard : FightView -> Int -> FightArea.PlayedCard -> Html Msg
@@ -1299,23 +1335,27 @@ renderPlayedCard fightView index playedCard =
                     NormalFightView ->
                         case ( PlayerCard.getAbility card, usedState ) of
                             ( Just ability, FightArea.NotUsed ) ->
-                                button [ class "border border-gray-100 rounded px-2 py-1 text-gray-100", onClick <| UseAbility index ] [ text "Use Ability" ]
+                                button [ class transparentButton, onClick <| UseAbility index ] [ text <| FightStats.getAbilityLabel ability ]
 
                             ( Just _, FightArea.InUse ) ->
                                 div [ class "px-2 py-1" ] [ text "In Use" ]
 
                             ( Just ability, FightArea.Used ) ->
-                                button [ class "border border-gray-500 rounded px-2 py-1 text-gray-500", disabled True ] [ text "Use Ability" ]
+                                button [ class disabledTransparentButton, disabled True ] [ text <| FightStats.getAbilityLabel ability ]
 
                             ( Nothing, _ ) ->
                                 div [] []
 
                     SelectDoubleView doubleIndex ->
-                        if index == doubleIndex || isDoubled then
-                            div [ class "px-2 py-1" ] [ text "Can't double" ]
+                        if isDoubled then
+                            -- can't double the same card twice
+                            div [] []
+
+                        else if index == doubleIndex then
+                            button [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500", onClick <| CancelAbilitiesInUse ] [ text "Cancel" ]
 
                         else
-                            button [ class "border border-gray-100 rounded px-2 py-1 text-gray-100", onClick <| SelectDouble index ] [ text "Select Double" ]
+                            button [ class transparentButton, onClick <| SelectDouble index ] [ text "Select Double" ]
 
                     _ ->
                         Debug.todo "Implement missing fight view"
@@ -1330,7 +1370,7 @@ renderFightingHazard commonState fightArea fightView =
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
-            , renderFightDash fightArea commonState.phase
+            , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea commonState.phase
             , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
             ]
         ]

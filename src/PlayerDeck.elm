@@ -1,5 +1,6 @@
 module PlayerDeck exposing
     ( PlayerDeck
+    , canDraw
     , create
     , discard
     , discardPileCount
@@ -81,6 +82,11 @@ drawPileCount (PlayerDeck deck _ _) =
 discardPileCount : PlayerDeck -> Int
 discardPileCount (PlayerDeck _ discardPile _) =
     List.length discardPile
+
+
+canDraw : PlayerDeck -> Bool
+canDraw (PlayerDeck drawPile discardPile _) =
+    not (List.isEmpty drawPile && List.isEmpty discardPile)
 
 
 
