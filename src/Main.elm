@@ -141,7 +141,7 @@ init _ =
         commonState =
             { seed = seedAfterPirateShuffle
             , lifePoints = LifePoints.createCounter 20
-            , phase = PhaseRed
+            , phase = PhaseGreen
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
@@ -1107,6 +1107,31 @@ renderCommonState commonState =
         ]
 
 
+statCircle : String
+statCircle =
+    "rounded-full h-8 w-8 flex items-center justify-center font-semibold text-sm"
+
+
+statWhite : String
+statWhite =
+    statCircle ++ " bg-white text-gray-900 border border-gray-900"
+
+
+statGreen : String
+statGreen =
+    statCircle ++ " bg-green-600 text-gray-100 border border-gray-10"
+
+
+statYellow : String
+statYellow =
+    statCircle ++ " bg-yellow-400 text-gray-900 border border-gray-900"
+
+
+statRed : String
+statRed =
+    statCircle ++ " bg-red-600 text-gray-100 border border-gray-100"
+
+
 renderHazard : Phase -> HazardCard -> Html Msg
 renderHazard phase hazardCard =
     div [ class "flex flex-col bg-orange-300 h-32 w-64 p-2 border-8 border-orange-600 rounded border-white text-orange-800 relative" ]
@@ -1115,23 +1140,23 @@ renderHazard phase hazardCard =
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
             , case phase of
                 PhaseGreen ->
-                    div [ class "bg-green-600 text-gray-100 border-gray-10 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                    div [ class statGreen ]
                         [ text <| String.fromInt <| HazardCard.getGreenValue hazardCard
                         ]
 
                 PhaseYellow ->
-                    div [ class "bg-yellow-500 text-gray-100 border-gray-100 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                    div [ class statYellow ]
                         [ text <| String.fromInt <| HazardCard.getYellowValue hazardCard
                         ]
 
                 PhaseRed ->
-                    div [ class "bg-red-600 text-gray-100 border-gray-100 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                    div [ class statRed ]
                         [ text <| String.fromInt <| HazardCard.getRedValue hazardCard
                         ]
             ]
         , div [ class "flex items-center" ]
             [ div [ class "text-sm mr-2" ] [ text "Free cards: " ]
-            , div [ class "bg-gray-100 text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+            , div [ class statWhite ]
                 [ text <| String.fromInt <| HazardCard.getFreeCards hazardCard
                 ]
             ]
@@ -1272,14 +1297,14 @@ renderPlayerCard playerCard isDoubled =
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
             , if isDoubled then
                 div [ class "flex items-center" ]
-                    [ div [ class "bg-white text-green-600 border-gray-900 border font-bold text-sm px-4 py-0 rounded-sm underline" ]
+                    [ div [ class <| statWhite ++ "font-bold underline text-green-600" ]
                         [ text <| String.fromInt <| PlayerCard.getStrength playerCard * 2
                         ]
                     , div [ class "ml-2" ] [ text "*Doubled" ]
                     ]
 
               else
-                div [ class "bg-white text-gray-900 border-gray-900 border font-semibold text-sm px-4 py-0 rounded-sm" ]
+                div [ class statWhite ]
                     [ text <| String.fromInt <| PlayerCard.getStrength playerCard
                     ]
             ]
