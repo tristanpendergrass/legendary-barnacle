@@ -1410,6 +1410,26 @@ renderFightingHazard commonState fightArea fightView =
 
 
 
+-- PlayerWon
+
+
+renderPlayerWon : CommonState -> HazardCard -> Html Msg
+renderPlayerWon commonState reward =
+    div [ class "flex flex-row flex-grow space-x-8" ]
+        [ renderCommonState commonState
+        , div [ class rightColClasses ]
+            [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                [ div [ class "text-3xl font-bold" ] [ text "Collect Reward" ]
+                ]
+            , div [ class "flex flex-col items-center" ]
+                [ renderPlayerCard (PlayerCard.fromHazardCard reward) False ]
+            , div [ class "flex flex-col items-center" ]
+                [ button [ class standardButton, onClick AcceptWin ] [ text "Accept" ] ]
+            ]
+        ]
+
+
+
 -- VIEW
 
 
@@ -1443,6 +1463,9 @@ view model =
 
                 GameInProgress (FightingHazard commonState fightArea fightView) ->
                     renderFightingHazard commonState fightArea fightView
+
+                GameInProgress (ResolvingFight commonState (PlayerWon reward)) ->
+                    renderPlayerWon commonState reward
 
                 GameInProgress _ ->
                     h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
