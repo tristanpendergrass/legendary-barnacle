@@ -3,7 +3,6 @@ module FightArea exposing
     , IsDoubled
     , PlayedCard(..)
     , UsedState(..)
-    , getPlayedCards
     , attemptDestroy
     , attemptDouble
     , attemptExchange
@@ -14,6 +13,7 @@ module FightArea exposing
     , getCards
     , getEnemy
     , getFreeCardsDrawn
+    , getPlayedCards
     , getPlayerStrength
     , hasUnusedAgingCards
     , isPhaseMinusOne
@@ -35,7 +35,10 @@ type UsedState
     | Used
     | InUse
 
-type alias IsDoubled = Bool
+
+type alias IsDoubled =
+    Bool
+
 
 type PlayedCard
     = NormalCard PlayerCard IsDoubled
@@ -336,7 +339,7 @@ attemptDestroy index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
     let
         maybeNewCards : Maybe (List PlayedCard)
         maybeNewCards =
-            if index > 0 && index < List.length cards then
+            if index >= 0 && index < List.length cards then
                 Just (List.take index cards ++ List.drop (index + 1) cards)
 
             else

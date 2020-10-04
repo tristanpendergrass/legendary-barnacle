@@ -1243,6 +1243,7 @@ renderFightDash canDraw fightArea phase =
             [ div [ class "flex" ]
                 [ div [ class "flex items-end" ]
                     [ if canDraw then
+                        -- TODO: disable if not in NormalFightView
                         button [ class standardButton, onClick DrawNormally ] [ text "Draw" ]
 
                       else
@@ -1381,6 +1382,13 @@ renderPlayedCard fightView index playedCard =
 
                         else
                             button [ class transparentButton, onClick <| SelectDouble index ] [ text "Select Double" ]
+
+                    SelectDestroyView destroyIndex ->
+                        if index == destroyIndex then
+                            button [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500", onClick <| CancelAbilitiesInUse ] [ text "Cancel" ]
+
+                        else
+                            button [ class transparentButton, onClick <| SelectDestroy index ] [ text "Select Destroy" ]
 
                     _ ->
                         Debug.todo "Implement missing fight view"
