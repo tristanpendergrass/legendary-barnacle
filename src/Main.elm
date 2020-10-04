@@ -53,9 +53,13 @@ type OneOrTwo a
     | One a
 
 
+type alias HealthLost =
+    Int
+
+
 type ResolvingState
     = PlayerWon HazardCard
-    | PlayerLost Int (SelectionList PlayerCard)
+    | PlayerLost HealthLost (SelectionList PlayerCard)
 
 
 type alias AndAnother =
@@ -1292,7 +1296,7 @@ renderFightDash canDraw fightArea phase =
 
 renderPlayerCard : PlayerCard -> Bool -> Html Msg
 renderPlayerCard playerCard isDoubled =
-    div [ class "mr-4 mb-4 flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
+    div [ class "flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
         [ div [ class "font-bold mb-2" ] [ text (PlayerCard.getTitle playerCard) ]
         , div [ class "flex items-center mb-1" ]
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
@@ -1346,7 +1350,7 @@ renderPlayedCard fightView index playedCard =
     case playedCard of
         FightArea.NormalCard card isDoubled ->
             div [ class "flex flex-col items-center" ]
-                [ renderPlayerCard card isDoubled
+                [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card isDoubled ]
                 , if isDoubled then
                     div [] [ text "Doubled" ]
 
@@ -1356,7 +1360,7 @@ renderPlayedCard fightView index playedCard =
 
         FightArea.AbilityCard card usedState isDoubled ->
             div [ class "flex flex-col items-center" ]
-                [ renderPlayerCard card isDoubled
+                [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card isDoubled ]
                 , case fightView of
                     NormalFightView ->
                         case ( PlayerCard.getAbility card, usedState ) of
@@ -1430,6 +1434,64 @@ renderPlayerWon commonState reward =
 
 
 
+-- PlayerLost
+
+
+renderPlayerLost : CommonState -> HealthLost -> SelectionList PlayerCard -> Html Msg
+renderPlayerLost commonState healthLost playerCardList =
+    let
+        numSelected : Int
+        numSelected =
+            SelectionList.countSelected playerCardList
+
+        renderSelectableCard : Int -> Bool -> PlayerCard -> Html Msg
+        renderSelectableCard index isSelected playerCard =
+            div [ class "flex flex-col justify-center" ]
+                [ div [ class "relative mr-4 mb-4" ]
+                    [ renderPlayerCard playerCard False
+                    , if isSelected then
+                        div [ class "absolute top-0 left-0 w-full h-full opacity-50 bg-black" ] []
+
+                      else
+                        div [] []
+                    ]
+                , div []
+                    [ text <|
+                        if isSelected then
+                            "selected"
+
+                        else
+                            "not selected"
+                    ]
+                , button [ class standardButton, onClick (ToggleLossDestroy index) ]
+                    [ text <|
+                        if isSelected then
+                            "Deselect"
+
+                        else
+                            "Select"
+                    ]
+                ]
+    in
+    div [ class "flex flex-row flex-grow space-x-8" ]
+        [ renderCommonState commonState
+        , div [ class rightColClasses ]
+            [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                [ div [ class "text-3xl font-bold" ] [ text "Sacrifice Cards" ]
+                ]
+            , div [ class "flex flex-col items-center" ]
+                [ div [] [ text "You have lost...but you might have unlearned some bad habits." ] ]
+            , div [ class "flex flex-col items-center" ]
+                [ div [] [ text <| String.fromInt numSelected ++ "/" ++ String.fromInt healthLost ++ " cards sacrificed" ] ]
+            , div [ class "flex flex-col items-center" ]
+                [ button [ class standardButton, onClick AcceptLoss ] [ text "Accept" ] ]
+            , div [ class "flex flex-wrap" ]
+                (SelectionList.map renderSelectableCard playerCardList)
+            ]
+        ]
+
+
+
 -- VIEW
 
 
@@ -1466,6 +1528,9 @@ view model =
 
                 GameInProgress (ResolvingFight commonState (PlayerWon reward)) ->
                     renderPlayerWon commonState reward
+
+                GameInProgress (ResolvingFight commonState (PlayerLost healthLost playerCardList)) ->
+                    renderPlayerLost commonState healthLost playerCardList
 
                 GameInProgress _ ->
                     h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]

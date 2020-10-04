@@ -1,4 +1,4 @@
-module SelectionList exposing (SelectionList, attemptToggle, create, getUnselected)
+module SelectionList exposing (SelectionList, attemptToggle, countSelected, create, getUnselected, map)
 
 import List.Extra
 
@@ -63,7 +63,7 @@ attemptToggle index (SelectionList limit list) =
     list
         |> attemptReplaceAtIndex index
             (\selectionTuple ->
-                if Tuple.first selectionTuple && limitReached then
+                if not (Tuple.first selectionTuple) && limitReached then
                     Nothing
 
                 else
@@ -77,3 +77,15 @@ getUnselected (SelectionList _ list) =
     list
         |> List.filter (Tuple.first >> not)
         |> List.map Tuple.second
+
+
+countSelected : SelectionList a -> Int
+countSelected (SelectionList _ list) =
+    numSelected list
+
+
+map : (Int -> Bool -> a -> b) -> SelectionList a -> List b
+map mapFn (SelectionList _ list) =
+    List.indexedMap
+        (\index ( isSelected, item ) -> mapFn index isSelected item)
+        list
