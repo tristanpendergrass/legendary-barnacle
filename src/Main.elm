@@ -1414,6 +1414,24 @@ renderFightingHazard commonState fightArea fightView =
 
 
 
+-- FinalShowdown
+
+
+renderFinalShowdown : CommonState -> FightArea PirateCard -> FightView -> Html Msg
+renderFinalShowdown commonState fightArea fightView =
+    div [ class "flex flex-row flex-grow space-x-8" ]
+        [ renderCommonState commonState
+        , div [ class rightColClasses ]
+            [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
+                ]
+            , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea commonState.phase
+            , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
+            ]
+        ]
+
+
+
 -- PlayerWon
 
 
@@ -1531,6 +1549,9 @@ view model =
 
                 GameInProgress (ResolvingFight commonState (PlayerLost healthLost playerCardList)) ->
                     renderPlayerLost commonState healthLost playerCardList
+
+                GameInProgress (FinalShowdown commonState fightArea fightView) ->
+                    renderFinalShowdown commonState fightArea fightView
 
                 GameInProgress _ ->
                     h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
