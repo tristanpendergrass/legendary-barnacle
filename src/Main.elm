@@ -160,6 +160,7 @@ init _ =
 
 
 
+-- ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
 -- UPDATE
 
 
@@ -1263,15 +1264,12 @@ type alias FightDashArgs =
     , renderEnemy : Html Msg
     , freeCards : Int
     , enemyStrength : Int
+    , endFightResult : Result EndFightErr EndFightOk
     }
 
 
-
--- TODO: Make end fight work correctly with FinalShowdown
-
-
 renderFightDash : FightDashArgs -> Html Msg
-renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength } =
+renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength, endFightResult } =
     div [ class "flex items-center justify-between" ]
         [ div [ class "flex flex-col items-start space-y-4 px-8" ]
             [ div [ class "flex" ]
@@ -1291,11 +1289,14 @@ renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength } =
                 ]
             , div [ class "flex" ]
                 [ div [ class "flex items-end" ]
-                    [ if FightArea.getCards fightArea |> List.isEmpty then
-                        button [ class disabledStandardButton, disabled True ] [ text "End Fight" ]
+                    [ case endFightResult of
+                        -- TODO: enhance this button with affordances for why fight can't be ended based on error type
+                        Err _ ->
+                            button [ class disabledStandardButton, disabled True ] [ text "End Fight" ]
 
-                      else
-                        button [ class standardButton, onClick EndFight ] [ text "End Fight" ]
+                        -- TODO: enhance this button with affordances to let player know if they'll win or lose
+                        Ok _ ->
+                            button [ class standardButton, onClick EndFight ] [ text "End Fight" ]
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
@@ -1429,17 +1430,6 @@ renderPlayedCard fightView index playedCard =
                 ]
 
 
-
--- type alias FightDashArgs =
---     { canDraw : Bool
---     , fightArea : FightArea
---     , renderEnemy : Html Msg
---     , freeCards : Int
---     , enemyStrength : Int
---     , phase : Phase
---     }
-
-
 renderFightingHazard : CommonState -> FightArea -> HazardCard -> FightView -> Html Msg
 renderFightingHazard commonState fightArea hazard fightView =
     div [ class "flex flex-row flex-grow space-x-8" ]
@@ -1454,6 +1444,7 @@ renderFightingHazard commonState fightArea hazard fightView =
                 , renderEnemy = renderHazard commonState.phase hazard
                 , freeCards = HazardCard.getFreeCards hazard
                 , enemyStrength = HazardCard.getStrength hazard
+                , endFightResult = attemptEndFightHazard commonState.phase fightArea hazard
                 }
 
             -- , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea hazard commonState.phase
@@ -1499,6 +1490,7 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 , renderEnemy = renderPirate pirate
                 , freeCards = PirateCard.getFreeCards pirate
                 , enemyStrength = PirateCard.getStrength pirate
+                , endFightResult = attemptEndFinalShowdown fightArea pirate
                 }
             , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
             ]

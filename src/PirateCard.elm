@@ -19,12 +19,12 @@ type PirateCard
 
 normal1 : PirateCard
 normal1 =
-    Normal { hazardValue = 8, freeCards = 30 }
+    Normal { hazardValue = 30, freeCards = 8 }
 
 
 normal2 : PirateCard
 normal2 =
-    Normal { hazardValue = 9, freeCards = 35 }
+    Normal { hazardValue = 35, freeCards = 9 }
 
 
 pirateCards : List PirateCard
