@@ -349,6 +349,92 @@ attemptDrawNormally commonState fightArea freeCards =
                             DrewCardNormally { newCommonState = newCommonState, newFightArea = newFightArea }
 
 
+type EndFightErr
+    = MustDrawACard
+    | UnusedAgingCards
+    | CantLoseFight
+
+
+type EndFightOk
+    = EndFightPlayerWon
+    | EndFightPlayerLost Int
+
+
+attemptEndFightHazard : Phase -> FightArea -> HazardCard -> Result EndFightErr EndFightOk
+attemptEndFightHazard phase fightArea hazard =
+    if List.length (FightArea.getCards fightArea) == 0 then
+        Err MustDrawACard
+
+    else if FightArea.hasUnusedAgingCards fightArea then
+        Err UnusedAgingCards
+
+    else
+        let
+            playerStrength : Int
+            playerStrength =
+                FightArea.getPlayerStrength fightArea
+
+            hazardStrength : Int
+            hazardStrength =
+                if FightArea.isPhaseMinusOne fightArea then
+                    case phase of
+                        PhaseGreen ->
+                            HazardCard.getGreenValue hazard
+
+                        PhaseYellow ->
+                            HazardCard.getGreenValue hazard
+
+                        PhaseRed ->
+                            HazardCard.getYellowValue hazard
+
+                else
+                    case phase of
+                        PhaseGreen ->
+                            HazardCard.getGreenValue hazard
+
+                        PhaseYellow ->
+                            HazardCard.getYellowValue hazard
+
+                        PhaseRed ->
+                            HazardCard.getRedValue hazard
+
+            strengthDifference : Int
+            strengthDifference =
+                hazardStrength - playerStrength
+        in
+        if strengthDifference <= 0 then
+            Ok EndFightPlayerWon
+
+        else
+            Ok (EndFightPlayerLost strengthDifference)
+
+
+attemptEndFinalShowdown : FightArea -> PirateCard -> Result EndFightErr EndFightOk
+attemptEndFinalShowdown fightArea pirate =
+    if FightArea.hasUnusedAgingCards fightArea then
+        Err UnusedAgingCards
+
+    else
+        let
+            playerStrength : Int
+            playerStrength =
+                FightArea.getPlayerStrength fightArea
+
+            pirateStrength : Int
+            pirateStrength =
+                PirateCard.getStrength pirate
+
+            strengthDifference : Int
+            strengthDifference =
+                pirateStrength - playerStrength
+        in
+        if strengthDifference <= 0 then
+            Ok EndFightPlayerWon
+
+        else
+            Ok (EndFightPlayerLost strengthDifference)
+
+
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
 updateGameInProgress msg gameState =
     let
@@ -404,120 +490,67 @@ updateGameInProgress msg gameState =
                     ( GameInProgress (FinalShowdown newCommonState newFightArea pirateCard NormalFightView), Cmd.none )
 
         ( EndFight, FightingHazard commonState fightArea hazard NormalFightView ) ->
-            let
-                { phase, playerDeck, hazardDeck } =
-                    commonState
+            case attemptEndFightHazard commonState.phase fightArea hazard of
+                Err _ ->
+                    noOp
 
-                playerStrength : Int
-                playerStrength =
-                    FightArea.getPlayerStrength fightArea
+                Ok EndFightPlayerWon ->
+                    let
+                        discardedCards : List PlayerCard
+                        discardedCards =
+                            FightArea.getCards fightArea
 
-                hazardStrength : Int
-                hazardStrength =
-                    if FightArea.isPhaseMinusOne fightArea then
-                        case phase of
-                            PhaseGreen ->
-                                HazardCard.getGreenValue hazard
+                        newPlayerDeck : PlayerDeck
+                        newPlayerDeck =
+                            PlayerDeck.discard discardedCards commonState.playerDeck
 
-                            PhaseYellow ->
-                                HazardCard.getGreenValue hazard
+                        newCommonState : CommonState
+                        newCommonState =
+                            { commonState | playerDeck = newPlayerDeck }
 
-                            PhaseRed ->
-                                HazardCard.getYellowValue hazard
+                        resolvingState : ResolvingState
+                        resolvingState =
+                            PlayerWon hazard
+                    in
+                    ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
-                    else
-                        case phase of
-                            PhaseGreen ->
-                                HazardCard.getGreenValue hazard
+                Ok (EndFightPlayerLost strengthDifference) ->
+                    case LifePoints.decrementCounter strengthDifference commonState.lifePoints of
+                        Nothing ->
+                            ( GameOver, Cmd.none )
 
-                            PhaseYellow ->
-                                HazardCard.getYellowValue hazard
+                        Just newLifePoints ->
+                            let
+                                newHazardDeck : HazardDeck
+                                newHazardDeck =
+                                    HazardDeck.discard [ hazard ] commonState.hazardDeck
 
-                            PhaseRed ->
-                                HazardCard.getRedValue hazard
+                                newCommonState : CommonState
+                                newCommonState =
+                                    { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
 
-                strengthDifference : Int
-                strengthDifference =
-                    hazardStrength - playerStrength
+                                playerCardList : SelectionList PlayerCard
+                                playerCardList =
+                                    FightArea.getCards fightArea
+                                        |> SelectionList.create strengthDifference
 
-                playerWon : Bool
-                playerWon =
-                    strengthDifference <= 0
-            in
-            if playerWon then
-                let
-                    discardedCards : List PlayerCard
-                    discardedCards =
-                        FightArea.getCards fightArea
-
-                    newPlayerDeck : PlayerDeck
-                    newPlayerDeck =
-                        PlayerDeck.discard discardedCards playerDeck
-
-                    newCommonState : CommonState
-                    newCommonState =
-                        { commonState | playerDeck = newPlayerDeck }
-
-                    resolvingState : ResolvingState
-                    resolvingState =
-                        PlayerWon hazard
-                in
-                ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
-
-            else
-                -- Player lost, strengthDifference > 0
-                case LifePoints.decrementCounter strengthDifference commonState.lifePoints of
-                    Nothing ->
-                        ( GameOver, Cmd.none )
-
-                    Just newLifePoints ->
-                        let
-                            newHazardDeck : HazardDeck
-                            newHazardDeck =
-                                HazardDeck.discard [ hazard ] hazardDeck
-
-                            newCommonState : CommonState
-                            newCommonState =
-                                { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
-
-                            playerCardList : SelectionList PlayerCard
-                            playerCardList =
-                                FightArea.getCards fightArea
-                                    |> SelectionList.create strengthDifference
-
-                            resolvingState : ResolvingState
-                            resolvingState =
-                                PlayerLost strengthDifference playerCardList
-                        in
-                        ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
+                                resolvingState : ResolvingState
+                                resolvingState =
+                                    PlayerLost strengthDifference playerCardList
+                            in
+                            ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
         ( EndFight, FinalShowdown commonState fightArea pirate NormalFightView ) ->
-            if FightArea.hasUnusedAgingCards fightArea then
-                noOp
+            case attemptEndFinalShowdown fightArea pirate of
+                Err _ ->
+                    noOp
 
-            else
-                let
-                    { playerDeck, pirateStatus } =
-                        commonState
+                Ok (EndFightPlayerLost _) ->
+                    -- shouldn't happen
+                    noOp
 
-                    playerStrength : Int
-                    playerStrength =
-                        FightArea.getPlayerStrength fightArea
-
-                    pirateStrength : Int
-                    pirateStrength =
-                        PirateCard.getStrength pirate
-
-                    strengthDifference : Int
-                    strengthDifference =
-                        pirateStrength - playerStrength
-
-                    playerWon : Bool
-                    playerWon =
-                        strengthDifference <= 0
-                in
-                if playerWon then
-                    case pirateStatus of
+                Ok EndFightPlayerWon ->
+                    case commonState.pirateStatus of
                         BothPiratesAlive ->
                             let
                                 discardedCards : List PlayerCard
@@ -526,7 +559,7 @@ updateGameInProgress msg gameState =
 
                                 newPlayerDeck : PlayerDeck
                                 newPlayerDeck =
-                                    PlayerDeck.discard discardedCards playerDeck
+                                    PlayerDeck.discard discardedCards commonState.playerDeck
 
                                 newCommonState : CommonState
                                 newCommonState =
@@ -540,10 +573,6 @@ updateGameInProgress msg gameState =
 
                         OnePirateDefeated ->
                             ( GameOver, Cmd.none )
-
-                else
-                    -- Player isn't allowed to surrender the final showdown
-                    noOp
 
         ( UseAbility index, FightingHazard commonState fightArea hazard NormalFightView ) ->
             FightArea.attemptUse index fightArea
@@ -1238,7 +1267,6 @@ type alias FightDashArgs =
 
 
 
--- TODO: add handleDraw arg and wire up draw in FinalShowdown
 -- TODO: Make end fight work correctly with FinalShowdown
 
 
