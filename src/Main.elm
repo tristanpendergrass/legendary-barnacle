@@ -82,9 +82,14 @@ type GameState
     | FinalShowdown CommonState FightArea PirateCard FightView
 
 
+type GameOverState
+    = Win
+    | Loss
+
+
 type Model
     = GameInProgress GameState
-    | GameOver
+    | GameOver GameOverState
 
 
 addTwoShuffleAndDraw : a -> a -> List a -> Random.Generator ( a, a, List a )
@@ -156,11 +161,12 @@ init _ =
         hazardSelectionState =
             Two leftHazard rightHazard
     in
+    -- ( GameOver Win, Cmd.none )
+    -- ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
     ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
 
 
 
--- ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
 -- UPDATE
 
 
@@ -201,7 +207,7 @@ update msg model =
         GameInProgress gameState ->
             updateGameInProgress msg gameState
 
-        GameOver ->
+        GameOver _ ->
             ( model, Cmd.none )
 
 
@@ -466,7 +472,7 @@ updateGameInProgress msg gameState =
             in
             case attemptDrawNormally commonState fightArea freeDraws of
                 DrawingKillsPlayer ->
-                    ( GameOver, Cmd.none )
+                    ( GameOver Loss, Cmd.none )
 
                 CantDrawNormally ->
                     noOp
@@ -482,7 +488,7 @@ updateGameInProgress msg gameState =
             in
             case attemptDrawNormally commonState fightArea freeDraws of
                 DrawingKillsPlayer ->
-                    ( GameOver, Cmd.none )
+                    ( GameOver Loss, Cmd.none )
 
                 CantDrawNormally ->
                     noOp
@@ -518,7 +524,7 @@ updateGameInProgress msg gameState =
                 Ok (EndFightPlayerLost strengthDifference) ->
                     case LifePoints.decrementCounter strengthDifference commonState.lifePoints of
                         Nothing ->
-                            ( GameOver, Cmd.none )
+                            ( GameOver Loss, Cmd.none )
 
                         Just newLifePoints ->
                             let
@@ -573,7 +579,7 @@ updateGameInProgress msg gameState =
                             ( GameInProgress newGameState, Cmd.none )
 
                         OnePirateDefeated ->
-                            ( GameOver, Cmd.none )
+                            ( GameOver Win, Cmd.none )
 
         ( UseAbility index, FightingHazard commonState fightArea hazard NormalFightView ) ->
             FightArea.attemptUse index fightArea
@@ -1601,8 +1607,11 @@ view model =
                     ]
                 ]
             , case model of
-                GameOver ->
-                    h2 [ class "text-xl" ] [ text "Game over" ]
+                GameOver Win ->
+                    h2 [ class "text-xl" ] [ text "You are winner!" ]
+
+                GameOver Loss ->
+                    h2 [ class "text-xl" ] [ text "You are loser!" ]
 
                 GameInProgress (HazardSelection commonState hazardOption) ->
                     renderHazardSelection commonState hazardOption
