@@ -11,7 +11,6 @@ module FightArea exposing
     , createFightArea
     , getCard
     , getCards
-    , getEnemy
     , getFreeCardsDrawn
     , getPlayedCards
     , getPlayerStrength
@@ -53,18 +52,13 @@ type alias FreeCardsDrawn =
     Int
 
 
-type FightArea a
-    = FightArea a (List PlayedCard) PhaseMinusOne FreeCardsDrawn
+type FightArea
+    = FightArea (List PlayedCard) PhaseMinusOne FreeCardsDrawn
 
 
-getPlayedCards : FightArea a -> List PlayedCard
-getPlayedCards (FightArea _ cards _ _) =
+getPlayedCards : FightArea -> List PlayedCard
+getPlayedCards (FightArea cards _ _) =
     cards
-
-
-getEnemy : FightArea a -> a
-getEnemy (FightArea enemy _ _ _) =
-    enemy
 
 
 toPlayedCard : PlayerCard -> PlayedCard
@@ -86,14 +80,14 @@ fromPlayedCard playedCard =
             card
 
 
-createFightArea : a -> FightArea a
-createFightArea enemy =
-    FightArea enemy [] False 0
+createFightArea : FightArea
+createFightArea =
+    FightArea [] False 0
 
 
-playCard : PlayerCard -> FightArea a -> FightArea a
-playCard card (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
-    FightArea enemy (toPlayedCard card :: cards) phaseMinusOne freeCardsDrawn
+playCard : PlayerCard -> FightArea -> FightArea
+playCard card (FightArea cards phaseMinusOne freeCardsDrawn) =
+    FightArea (toPlayedCard card :: cards) phaseMinusOne freeCardsDrawn
 
 
 isStopDrawingCard : PlayedCard -> Bool
@@ -109,10 +103,10 @@ isStopDrawingCard playedCard =
             False
 
 
-attemptPlayFreeCard : PlayerCard -> Int -> FightArea a -> Maybe (FightArea a)
-attemptPlayFreeCard card freeCardLimit (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+attemptPlayFreeCard : PlayerCard -> Int -> FightArea -> Maybe FightArea
+attemptPlayFreeCard card freeCardLimit (FightArea cards phaseMinusOne freeCardsDrawn) =
     if freeCardsDrawn < freeCardLimit && not (List.any isStopDrawingCard cards) then
-        Just (FightArea enemy (toPlayedCard card :: cards) phaseMinusOne (freeCardsDrawn + 1))
+        Just (FightArea (toPlayedCard card :: cards) phaseMinusOne (freeCardsDrawn + 1))
 
     else
         Nothing
@@ -141,12 +135,12 @@ getPlayedCardStrength playedCard =
             strength * 2
 
 
-getPlayerStrength : FightArea a -> Int
+getPlayerStrength : FightArea -> Int
 getPlayerStrength =
     getPlayedCards >> List.map getPlayedCardStrength >> List.foldl (+) 0
 
 
-getCard : Int -> FightArea a -> Maybe PlayerCard
+getCard : Int -> FightArea -> Maybe PlayerCard
 getCard index fightArea =
     fightArea
         |> getPlayedCards
@@ -164,8 +158,8 @@ isInUse playedCard =
             False
 
 
-setCardUsed : Int -> FightArea a -> FightArea a
-setCardUsed index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+setCardUsed : Int -> FightArea -> FightArea
+setCardUsed index (FightArea cards phaseMinusOne freeCardsDrawn) =
     let
         useCard : PlayedCard -> PlayedCard
         useCard playedCard =
@@ -186,7 +180,6 @@ setCardUsed index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
                 playedCard
     in
     FightArea
-        enemy
         (List.indexedMap (setUsedIfIndexMatches index) cards)
         phaseMinusOne
         freeCardsDrawn
@@ -233,24 +226,24 @@ setUsed card =
             card
 
 
-attemptUse : Int -> FightArea a -> Result String ( SpecialAbility, { setCardInUse : FightArea a, setCardUsed : FightArea a } )
-attemptUse index (FightArea enemy playedCards phaseMinusOne freeCardsDrawn) =
+attemptUse : Int -> FightArea -> Result String ( SpecialAbility, { setCardInUse : FightArea, setCardUsed : FightArea } )
+attemptUse index (FightArea playedCards phaseMinusOne freeCardsDrawn) =
     List.Extra.getAt index playedCards
         |> Maybe.andThen getCardWithUnusedAbility
         |> Maybe.map
             (\( playedCard, ability ) ->
                 Ok
                     ( ability
-                    , { setCardInUse = FightArea enemy (replaceAtIndex index playedCards (setInUse playedCard)) phaseMinusOne freeCardsDrawn
-                      , setCardUsed = FightArea enemy (replaceAtIndex index playedCards (setUsed playedCard)) phaseMinusOne freeCardsDrawn
+                    , { setCardInUse = FightArea (replaceAtIndex index playedCards (setInUse playedCard)) phaseMinusOne freeCardsDrawn
+                      , setCardUsed = FightArea (replaceAtIndex index playedCards (setUsed playedCard)) phaseMinusOne freeCardsDrawn
                       }
                     )
             )
         |> Maybe.withDefault (Err "Can't use card")
 
 
-setInUseToUsed : FightArea a -> FightArea a
-setInUseToUsed (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+setInUseToUsed : FightArea -> FightArea
+setInUseToUsed (FightArea cards phaseMinusOne freeCardsDrawn) =
     let
         setInUseCardToUsed : PlayedCard -> PlayedCard
         setInUseCardToUsed playedCard =
@@ -262,19 +255,18 @@ setInUseToUsed (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
                     playedCard
     in
     FightArea
-        enemy
         (List.map setInUseCardToUsed cards)
         phaseMinusOne
         freeCardsDrawn
 
 
-getCards : FightArea a -> List PlayerCard
+getCards : FightArea -> List PlayerCard
 getCards =
     getPlayedCards >> List.map fromPlayedCard
 
 
-undoAllInUse : FightArea a -> FightArea a
-undoAllInUse (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+undoAllInUse : FightArea -> FightArea
+undoAllInUse (FightArea cards phaseMinusOne freeCardsDrawn) =
     let
         setInUseCardToUnused : PlayedCard -> PlayedCard
         setInUseCardToUnused card =
@@ -289,7 +281,7 @@ undoAllInUse (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
         newCards =
             List.map setInUseCardToUnused cards
     in
-    FightArea enemy newCards phaseMinusOne freeCardsDrawn
+    FightArea newCards phaseMinusOne freeCardsDrawn
 
 
 attemptDoublePlayedCard : PlayedCard -> Maybe PlayedCard
@@ -305,37 +297,37 @@ attemptDoublePlayedCard card =
             Nothing
 
 
-attemptDouble : Int -> FightArea a -> Maybe (FightArea a)
-attemptDouble index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+attemptDouble : Int -> FightArea -> Maybe FightArea
+attemptDouble index (FightArea cards phaseMinusOne freeCardsDrawn) =
     List.Extra.getAt index cards
         |> Maybe.andThen attemptDoublePlayedCard
         |> Maybe.map
             (\doubledCard ->
-                FightArea enemy (replaceAtIndex index cards doubledCard) phaseMinusOne freeCardsDrawn
+                FightArea (replaceAtIndex index cards doubledCard) phaseMinusOne freeCardsDrawn
             )
 
 
-getOnExchange : FightArea a -> Int -> PlayerCard -> FightArea a
-getOnExchange (FightArea enemy cards phaseMinusOne freeCardsDrawn) index newElement =
+getOnExchange : FightArea -> Int -> PlayerCard -> FightArea
+getOnExchange (FightArea cards phaseMinusOne freeCardsDrawn) index newElement =
     let
         newCards : List PlayedCard
         newCards =
             replaceAtIndex index cards (toPlayedCard newElement)
     in
-    FightArea enemy newCards phaseMinusOne freeCardsDrawn
+    FightArea newCards phaseMinusOne freeCardsDrawn
 
 
-attemptExchange : Int -> FightArea a -> Maybe ( PlayerCard, PlayerCard -> FightArea a )
-attemptExchange index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+attemptExchange : Int -> FightArea -> Maybe ( PlayerCard, PlayerCard -> FightArea )
+attemptExchange index (FightArea cards phaseMinusOne freeCardsDrawn) =
     List.Extra.getAt index cards
         |> Maybe.map
             (\card ->
-                ( fromPlayedCard card, getOnExchange (FightArea enemy cards phaseMinusOne freeCardsDrawn) index )
+                ( fromPlayedCard card, getOnExchange (FightArea cards phaseMinusOne freeCardsDrawn) index )
             )
 
 
-attemptDestroy : Int -> FightArea a -> Maybe (FightArea a)
-attemptDestroy index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
+attemptDestroy : Int -> FightArea -> Maybe FightArea
+attemptDestroy index (FightArea cards phaseMinusOne freeCardsDrawn) =
     let
         maybeNewCards : Maybe (List PlayedCard)
         maybeNewCards =
@@ -345,11 +337,11 @@ attemptDestroy index (FightArea enemy cards phaseMinusOne freeCardsDrawn) =
             else
                 Nothing
     in
-    Maybe.map (\newCards -> FightArea enemy newCards phaseMinusOne freeCardsDrawn) maybeNewCards
+    Maybe.map (\newCards -> FightArea newCards phaseMinusOne freeCardsDrawn) maybeNewCards
 
 
-hasUnusedAgingCards : FightArea a -> Bool
-hasUnusedAgingCards (FightArea _ cards _ _) =
+hasUnusedAgingCards : FightArea -> Bool
+hasUnusedAgingCards (FightArea cards _ _) =
     let
         isUnusedAgingCard : PlayedCard -> Bool
         isUnusedAgingCard playedCard =
@@ -363,16 +355,16 @@ hasUnusedAgingCards (FightArea _ cards _ _) =
     List.any isUnusedAgingCard cards
 
 
-setPhaseMinusOne : FightArea a -> FightArea a
-setPhaseMinusOne (FightArea enemy cards _ freeCardsDrawn) =
-    FightArea enemy cards True freeCardsDrawn
+setPhaseMinusOne : FightArea -> FightArea
+setPhaseMinusOne (FightArea cards _ freeCardsDrawn) =
+    FightArea cards True freeCardsDrawn
 
 
-isPhaseMinusOne : FightArea a -> Bool
-isPhaseMinusOne (FightArea _ _ phaseMinusOne _) =
+isPhaseMinusOne : FightArea -> Bool
+isPhaseMinusOne (FightArea _ phaseMinusOne _) =
     phaseMinusOne
 
 
-getFreeCardsDrawn : FightArea a -> Int
-getFreeCardsDrawn (FightArea _ _ _ freeCards) =
+getFreeCardsDrawn : FightArea -> Int
+getFreeCardsDrawn (FightArea _ _ freeCards) =
     freeCards

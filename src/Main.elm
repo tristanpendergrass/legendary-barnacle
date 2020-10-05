@@ -10,7 +10,6 @@ import Html exposing (Html, a, button, div, h1, h2, h3, img, li, span, text, ul)
 import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
 import LifePoints
-import Maybe.Extra
 import Phase exposing (Phase(..))
 import PirateCard exposing (PirateCard)
 import PlayerCard exposing (PlayerCard)
@@ -78,9 +77,9 @@ type FightView
 
 type GameState
     = HazardSelection CommonState (OneOrTwo HazardCard)
-    | FightingHazard CommonState (FightArea HazardCard) FightView
+    | FightingHazard CommonState FightArea HazardCard FightView
     | ResolvingFight CommonState ResolvingState
-    | FinalShowdown CommonState (FightArea PirateCard) FightView
+    | FinalShowdown CommonState FightArea PirateCard FightView
 
 
 type Model
@@ -209,7 +208,8 @@ toFinalShowdown : CommonState -> GameState
 toFinalShowdown commonState =
     FinalShowdown
         commonState
-        (FightArea.createFightArea commonState.pirateOne)
+        FightArea.createFightArea
+        commonState.pirateOne
         NormalFightView
 
 
@@ -266,7 +266,7 @@ handlePhaseComplete maybeHazardCard incompleteCommonState =
 
 toFightingHazard : HazardCard -> CommonState -> GameState
 toFightingHazard hazard commonState =
-    FightingHazard commonState (FightArea.createFightArea hazard) NormalFightView
+    FightingHazard commonState FightArea.createFightArea hazard NormalFightView
 
 
 drawCard : CommonState -> Maybe ( PlayerCard, CommonState )
@@ -309,13 +309,13 @@ putOnBottomAndDraw card commonState =
         |> Maybe.withDefault ( card, commonState )
 
 
-type DrawCardNormallyResult a
+type DrawCardNormallyResult
     = CantDrawNormally
     | DrawingKillsPlayer
-    | DrewCardNormally { newCommonState : CommonState, newFightArea : FightArea a }
+    | DrewCardNormally { newCommonState : CommonState, newFightArea : FightArea }
 
 
-attemptDrawNormally : CommonState -> FightArea a -> Int -> DrawCardNormallyResult a
+attemptDrawNormally : CommonState -> FightArea -> Int -> DrawCardNormallyResult
 attemptDrawNormally commonState fightArea freeCards =
     case drawCard commonState of
         Nothing ->
@@ -328,7 +328,7 @@ attemptDrawNormally commonState fightArea freeCards =
 
                 Nothing ->
                     let
-                        newFightArea : FightArea a
+                        newFightArea : FightArea
                         newFightArea =
                             FightArea.playCard drawnCard fightArea
 
@@ -371,13 +371,11 @@ updateGameInProgress msg gameState =
             ( GameInProgress (handlePhaseComplete (Just card) commonState), Cmd.none )
 
         -- Fight
-        ( DrawNormally, FightingHazard commonState fightArea NormalFightView ) ->
+        ( DrawNormally, FightingHazard commonState fightArea hazardCard NormalFightView ) ->
             let
                 freeDraws : Int
                 freeDraws =
-                    fightArea
-                        |> FightArea.getEnemy
-                        |> HazardCard.getFreeCards
+                    HazardCard.getFreeCards hazardCard
             in
             case attemptDrawNormally commonState fightArea freeDraws of
                 DrawingKillsPlayer ->
@@ -387,15 +385,13 @@ updateGameInProgress msg gameState =
                     noOp
 
                 DrewCardNormally { newCommonState, newFightArea } ->
-                    ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+                    ( GameInProgress (FightingHazard newCommonState newFightArea hazardCard NormalFightView), Cmd.none )
 
-        ( DrawNormally, FinalShowdown commonState fightArea NormalFightView ) ->
+        ( DrawNormally, FinalShowdown commonState fightArea pirateCard NormalFightView ) ->
             let
                 freeDraws : Int
                 freeDraws =
-                    fightArea
-                        |> FightArea.getEnemy
-                        |> PirateCard.getFreeCards
+                    PirateCard.getFreeCards pirateCard
             in
             case attemptDrawNormally commonState fightArea freeDraws of
                 DrawingKillsPlayer ->
@@ -405,9 +401,9 @@ updateGameInProgress msg gameState =
                     noOp
 
                 DrewCardNormally { newCommonState, newFightArea } ->
-                    ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
+                    ( GameInProgress (FinalShowdown newCommonState newFightArea pirateCard NormalFightView), Cmd.none )
 
-        ( EndFight, FightingHazard commonState fightArea NormalFightView ) ->
+        ( EndFight, FightingHazard commonState fightArea hazard NormalFightView ) ->
             let
                 { phase, playerDeck, hazardDeck } =
                     commonState
@@ -415,10 +411,6 @@ updateGameInProgress msg gameState =
                 playerStrength : Int
                 playerStrength =
                     FightArea.getPlayerStrength fightArea
-
-                hazard : HazardCard
-                hazard =
-                    FightArea.getEnemy fightArea
 
                 hazardStrength : Int
                 hazardStrength =
@@ -499,7 +491,7 @@ updateGameInProgress msg gameState =
                         in
                         ( GameInProgress (ResolvingFight newCommonState resolvingState), Cmd.none )
 
-        ( EndFight, FinalShowdown commonState fightArea NormalFightView ) ->
+        ( EndFight, FinalShowdown commonState fightArea pirate NormalFightView ) ->
             if FightArea.hasUnusedAgingCards fightArea then
                 noOp
 
@@ -511,10 +503,6 @@ updateGameInProgress msg gameState =
                     playerStrength : Int
                     playerStrength =
                         FightArea.getPlayerStrength fightArea
-
-                    pirate : PirateCard
-                    pirate =
-                        FightArea.getEnemy fightArea
 
                     pirateStrength : Int
                     pirateStrength =
@@ -546,7 +534,7 @@ updateGameInProgress msg gameState =
 
                                 newGameState : GameState
                                 newGameState =
-                                    FinalShowdown newCommonState (FightArea.createFightArea commonState.pirateTwo) NormalFightView
+                                    FinalShowdown newCommonState FightArea.createFightArea commonState.pirateTwo NormalFightView
                             in
                             ( GameInProgress newGameState, Cmd.none )
 
@@ -557,7 +545,7 @@ updateGameInProgress msg gameState =
                     -- Player isn't allowed to surrender the final showdown
                     noOp
 
-        ( UseAbility index, FightingHazard commonState fightArea NormalFightView ) ->
+        ( UseAbility index, FightingHazard commonState fightArea hazard NormalFightView ) ->
             FightArea.attemptUse index fightArea
                 |> Result.andThen
                     (\( ability, { setCardInUse, setCardUsed } ) ->
@@ -572,11 +560,11 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.map
                     (\( newCommonState, newFightArea, newFightView ) ->
-                        ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard newCommonState newFightArea hazard newFightView), Cmd.none )
                     )
                 |> Result.withDefault noOp
 
-        ( UseAbility index, FinalShowdown commonState fightArea NormalFightView ) ->
+        ( UseAbility index, FinalShowdown commonState fightArea hazard NormalFightView ) ->
             FightArea.attemptUse index fightArea
                 |> Result.andThen
                     (\( ability, { setCardInUse, setCardUsed } ) ->
@@ -591,17 +579,17 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.map
                     (\( newCommonState, newFightArea, newFightView ) ->
-                        ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea hazard newFightView), Cmd.none )
                     )
                 |> Result.withDefault noOp
 
-        ( CancelAbilitiesInUse, FightingHazard commonState fightArea _ ) ->
-            ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
+        ( CancelAbilitiesInUse, FightingHazard commonState fightArea hazard _ ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) hazard NormalFightView), Cmd.none )
 
-        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea _ ) ->
-            ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) NormalFightView), Cmd.none )
+        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea pirate _ ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) pirate NormalFightView), Cmd.none )
 
-        ( SortFinish, FightingHazard commonState fightArea (SortView sortArea) ) ->
+        ( SortFinish, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             let
                 { cardsToKeep, cardsToDiscard } =
                     SortArea.getCards sortArea
@@ -616,13 +604,13 @@ updateGameInProgress msg gameState =
                 newCommonState =
                     { commonState | playerDeck = newPlayerDeck }
 
-                newFightArea : FightArea HazardCard
+                newFightArea : FightArea
                 newFightArea =
                     FightArea.setInUseToUsed fightArea
             in
-            ( GameInProgress (FightingHazard newCommonState newFightArea NormalFightView), Cmd.none )
+            ( GameInProgress (FightingHazard newCommonState newFightArea hazard NormalFightView), Cmd.none )
 
-        ( SortFinish, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+        ( SortFinish, FinalShowdown commonState fightArea pirate (SortView sortArea) ) ->
             let
                 { cardsToKeep, cardsToDiscard } =
                     SortArea.getCards sortArea
@@ -637,45 +625,45 @@ updateGameInProgress msg gameState =
                 newCommonState =
                     { commonState | playerDeck = newPlayerDeck }
 
-                newFightArea : FightArea PirateCard
+                newFightArea : FightArea
                 newFightArea =
                     FightArea.setInUseToUsed fightArea
             in
-            ( GameInProgress (FinalShowdown newCommonState newFightArea NormalFightView), Cmd.none )
+            ( GameInProgress (FinalShowdown newCommonState newFightArea pirate NormalFightView), Cmd.none )
 
-        ( SortChangeOrder changeOrderType, FightingHazard commonState fightArea (SortView sortArea) ) ->
+        ( SortChangeOrder changeOrderType, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
                 newSortArea =
                     SortArea.changeOrder changeOrderType sortArea
             in
-            ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
+            ( GameInProgress (FightingHazard commonState fightArea hazard (SortView newSortArea)), Cmd.none )
 
-        ( SortChangeOrder changeOrderType, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+        ( SortChangeOrder changeOrderType, FinalShowdown commonState fightArea pirate (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
                 newSortArea =
                     SortArea.changeOrder changeOrderType sortArea
             in
-            ( GameInProgress (FinalShowdown commonState fightArea (SortView newSortArea)), Cmd.none )
+            ( GameInProgress (FinalShowdown commonState fightArea pirate (SortView newSortArea)), Cmd.none )
 
-        ( SortDiscard discardType, FightingHazard commonState fightArea (SortView sortArea) ) ->
+        ( SortDiscard discardType, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
                 newSortArea =
                     SortArea.toggleDiscard discardType sortArea
             in
-            ( GameInProgress (FightingHazard commonState fightArea (SortView newSortArea)), Cmd.none )
+            ( GameInProgress (FightingHazard commonState fightArea hazard (SortView newSortArea)), Cmd.none )
 
-        ( SortDiscard discardType, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+        ( SortDiscard discardType, FinalShowdown commonState fightArea pirate (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
                 newSortArea =
                     SortArea.toggleDiscard discardType sortArea
             in
-            ( GameInProgress (FinalShowdown commonState fightArea (SortView newSortArea)), Cmd.none )
+            ( GameInProgress (FinalShowdown commonState fightArea pirate (SortView newSortArea)), Cmd.none )
 
-        ( SortReveal, FightingHazard commonState fightArea (SortView sortArea) ) ->
+        ( SortReveal, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             case ( SortArea.attemptReveal sortArea, drawCard commonState ) of
                 ( Just onReveal, Just ( drawnCard, newCommonState ) ) ->
                     let
@@ -683,12 +671,12 @@ updateGameInProgress msg gameState =
                         newSortArea =
                             onReveal drawnCard
                     in
-                    ( GameInProgress (FightingHazard newCommonState fightArea (SortView newSortArea)), Cmd.none )
+                    ( GameInProgress (FightingHazard newCommonState fightArea hazard (SortView newSortArea)), Cmd.none )
 
                 _ ->
                     noOp
 
-        ( SortReveal, FinalShowdown commonState fightArea (SortView sortArea) ) ->
+        ( SortReveal, FinalShowdown commonState fightArea pirate (SortView sortArea) ) ->
             case ( SortArea.attemptReveal sortArea, drawCard commonState ) of
                 ( Just onReveal, Just ( drawnCard, newCommonState ) ) ->
                     let
@@ -696,12 +684,12 @@ updateGameInProgress msg gameState =
                         newSortArea =
                             onReveal drawnCard
                     in
-                    ( GameInProgress (FinalShowdown newCommonState fightArea (SortView newSortArea)), Cmd.none )
+                    ( GameInProgress (FinalShowdown newCommonState fightArea pirate (SortView newSortArea)), Cmd.none )
 
                 _ ->
                     noOp
 
-        ( SelectCopy index, FightingHazard commonState fightArea (SelectCopyView copyIndex) ) ->
+        ( SelectCopy index, FightingHazard commonState fightArea hazard (SelectCopyView copyIndex) ) ->
             if index == copyIndex then
                 noOp
 
@@ -720,11 +708,11 @@ updateGameInProgress msg gameState =
                         )
                     |> Result.map
                         (\( newCommonState, newFightArea, newFightView ) ->
-                            ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+                            ( GameInProgress (FightingHazard newCommonState newFightArea hazard newFightView), Cmd.none )
                         )
                     |> Result.withDefault noOp
 
-        ( SelectCopy index, FinalShowdown commonState fightArea (SelectCopyView copyIndex) ) ->
+        ( SelectCopy index, FinalShowdown commonState fightArea pirate (SelectCopyView copyIndex) ) ->
             if index == copyIndex then
                 noOp
 
@@ -743,35 +731,35 @@ updateGameInProgress msg gameState =
                         )
                     |> Result.map
                         (\( newCommonState, newFightArea, newFightView ) ->
-                            ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+                            ( GameInProgress (FinalShowdown newCommonState newFightArea pirate newFightView), Cmd.none )
                         )
                     |> Result.withDefault noOp
 
-        ( SelectDouble index, FightingHazard commonState fightArea (SelectDoubleView doubleIndex) ) ->
+        ( SelectDouble index, FightingHazard commonState fightArea hazard (SelectDoubleView doubleIndex) ) ->
             if index == doubleIndex then
                 noOp
 
             else
                 case FightArea.attemptDouble index fightArea of
                     Just newFightArea ->
-                        ( GameInProgress (FightingHazard commonState (FightArea.setInUseToUsed newFightArea) NormalFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard commonState (FightArea.setInUseToUsed newFightArea) hazard NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectDouble index, FinalShowdown commonState fightArea (SelectDoubleView doubleIndex) ) ->
+        ( SelectDouble index, FinalShowdown commonState fightArea pirate (SelectDoubleView doubleIndex) ) ->
             if index == doubleIndex then
                 noOp
 
             else
                 case FightArea.attemptDouble index fightArea of
                     Just newFightArea ->
-                        ( GameInProgress (FinalShowdown commonState (FightArea.setInUseToUsed newFightArea) NormalFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown commonState (FightArea.setInUseToUsed newFightArea) pirate NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectBelowTheStack index, FightingHazard commonState fightArea (SelectBelowTheStackView belowTheStackIndex) ) ->
+        ( SelectBelowTheStack index, FightingHazard commonState fightArea hazard (SelectBelowTheStackView belowTheStackIndex) ) ->
             if index == belowTheStackIndex then
                 -- card cannot use ability on itself
                 noOp
@@ -783,12 +771,12 @@ updateGameInProgress msg gameState =
                             ( drawnCard, newCommonState ) =
                                 putOnBottomAndDraw playerCard commonState
                         in
-                        ( GameInProgress (FightingHazard newCommonState (onExchange drawnCard) NormalFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard newCommonState (onExchange drawnCard) hazard NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectBelowTheStack index, FinalShowdown commonState fightArea (SelectBelowTheStackView belowTheStackIndex) ) ->
+        ( SelectBelowTheStack index, FinalShowdown commonState fightArea pirate (SelectBelowTheStackView belowTheStackIndex) ) ->
             if index == belowTheStackIndex then
                 -- card cannot use ability on itself
                 noOp
@@ -800,12 +788,12 @@ updateGameInProgress msg gameState =
                             ( drawnCard, newCommonState ) =
                                 putOnBottomAndDraw playerCard commonState
                         in
-                        ( GameInProgress (FinalShowdown newCommonState (onExchange drawnCard) NormalFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown newCommonState (onExchange drawnCard) pirate NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectExchange index, FightingHazard commonState fightArea (SelectExchangeView exchangeIndex andAnother) ) ->
+        ( SelectExchange index, FightingHazard commonState fightArea hazard (SelectExchangeView exchangeIndex andAnother) ) ->
             if index == exchangeIndex then
                 noOp
 
@@ -824,7 +812,7 @@ updateGameInProgress msg gameState =
                                 else
                                     NormalFightView
 
-                            newFightArea : FightArea HazardCard
+                            newFightArea : FightArea
                             newFightArea =
                                 if andAnother then
                                     onExchange drawnCard
@@ -832,12 +820,12 @@ updateGameInProgress msg gameState =
                                 else
                                     FightArea.setInUseToUsed (onExchange drawnCard)
                         in
-                        ( GameInProgress (FightingHazard newCommonState newFightArea newFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard newCommonState newFightArea hazard newFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectExchange index, FinalShowdown commonState fightArea (SelectExchangeView exchangeIndex andAnother) ) ->
+        ( SelectExchange index, FinalShowdown commonState fightArea pirate (SelectExchangeView exchangeIndex andAnother) ) ->
             if index == exchangeIndex then
                 noOp
 
@@ -856,7 +844,7 @@ updateGameInProgress msg gameState =
                                 else
                                     NormalFightView
 
-                            newFightArea : FightArea PirateCard
+                            newFightArea : FightArea
                             newFightArea =
                                 if andAnother then
                                     onExchange drawnCard
@@ -864,12 +852,12 @@ updateGameInProgress msg gameState =
                                 else
                                     FightArea.setInUseToUsed (onExchange drawnCard)
                         in
-                        ( GameInProgress (FinalShowdown newCommonState newFightArea newFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea pirate newFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectDestroy index, FightingHazard commonState fightArea (SelectDestroyView destroyIndex) ) ->
+        ( SelectDestroy index, FightingHazard commonState fightArea hazard (SelectDestroyView destroyIndex) ) ->
             if index == destroyIndex then
                 noOp
 
@@ -877,16 +865,16 @@ updateGameInProgress msg gameState =
                 case FightArea.attemptDestroy index fightArea of
                     Just onDestroy ->
                         let
-                            newFightArea : FightArea HazardCard
+                            newFightArea : FightArea
                             newFightArea =
                                 FightArea.setInUseToUsed onDestroy
                         in
-                        ( GameInProgress (FightingHazard commonState newFightArea NormalFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard commonState newFightArea hazard NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
 
-        ( SelectDestroy index, FinalShowdown commonState fightArea (SelectDestroyView destroyIndex) ) ->
+        ( SelectDestroy index, FinalShowdown commonState fightArea pirate (SelectDestroyView destroyIndex) ) ->
             if index == destroyIndex then
                 noOp
 
@@ -894,11 +882,11 @@ updateGameInProgress msg gameState =
                 case FightArea.attemptDestroy index fightArea of
                     Just onDestroy ->
                         let
-                            newFightArea : FightArea PirateCard
+                            newFightArea : FightArea
                             newFightArea =
                                 FightArea.setInUseToUsed onDestroy
                         in
-                        ( GameInProgress (FinalShowdown commonState newFightArea NormalFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown commonState newFightArea pirate NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
@@ -948,17 +936,17 @@ updateGameInProgress msg gameState =
             noOp
 
 
-type alias ResolveAbilityArg a =
+type alias ResolveAbilityArg =
     { ability : SpecialAbility
     , index : Int
-    , setCardInUse : FightArea a
-    , setCardUsed : FightArea a
+    , setCardInUse : FightArea
+    , setCardUsed : FightArea
     , commonState : CommonState
-    , fightArea : FightArea a
+    , fightArea : FightArea
     }
 
 
-attemptResolveAbility : ResolveAbilityArg a -> Result String ( CommonState, FightArea a, FightView )
+attemptResolveAbility : ResolveAbilityArg -> Result String ( CommonState, FightArea, FightView )
 attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightArea } =
     case ability of
         PlusOneLife ->
@@ -971,7 +959,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 newCommonState =
                     { commonState | lifePoints = newLifePoints }
 
-                newFightArea : FightArea a
+                newFightArea : FightArea
                 newFightArea =
                     setCardUsed
             in
@@ -1240,8 +1228,22 @@ getHazardStrength phase hazard =
             HazardCard.getRedValue hazard
 
 
-renderFightDash : Bool -> FightArea HazardCard -> Phase -> Html Msg
-renderFightDash canDraw fightArea phase =
+type alias FightDashArgs =
+    { canDraw : Bool
+    , fightArea : FightArea
+    , renderEnemy : Html Msg
+    , freeCards : Int
+    , enemyStrength : Int
+    }
+
+
+
+-- TODO: add handleDraw arg and wire up draw in FinalShowdown
+-- TODO: Make end fight work correctly with FinalShowdown
+
+
+renderFightDash : FightDashArgs -> Html Msg
+renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength } =
     div [ class "flex items-center justify-between" ]
         [ div [ class "flex flex-col items-start space-y-4 px-8" ]
             [ div [ class "flex" ]
@@ -1255,7 +1257,7 @@ renderFightDash canDraw fightArea phase =
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
+                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt freeCards ]
                     , span [ class "leading-none" ] [ text "free cards drawn" ]
                     ]
                 ]
@@ -1269,13 +1271,13 @@ renderFightDash canDraw fightArea phase =
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (getHazardStrength phase (FightArea.getEnemy fightArea)) ]
+                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt enemyStrength ]
                     , span [ class "leading-none" ] [ text "total strength" ]
                     ]
                 ]
             ]
         , div []
-            [ renderHazard phase (FightArea.getEnemy fightArea) ]
+            [ renderEnemy ]
 
         -- Below is an invisible copy of earlier button cluster for purposes of centering the hazard card using justify-between
         , div [ class "invisible flex flex-col items-start space-y-4 px-8" ]
@@ -1285,7 +1287,7 @@ renderFightDash canDraw fightArea phase =
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt (HazardCard.getFreeCards (FightArea.getEnemy fightArea)) ]
+                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt freeCards ]
                     , span [ class "leading-none" ] [ text "free cards drawn" ]
                     ]
                 ]
@@ -1399,15 +1401,34 @@ renderPlayedCard fightView index playedCard =
                 ]
 
 
-renderFightingHazard : CommonState -> FightArea HazardCard -> FightView -> Html Msg
-renderFightingHazard commonState fightArea fightView =
+
+-- type alias FightDashArgs =
+--     { canDraw : Bool
+--     , fightArea : FightArea
+--     , renderEnemy : Html Msg
+--     , freeCards : Int
+--     , enemyStrength : Int
+--     , phase : Phase
+--     }
+
+
+renderFightingHazard : CommonState -> FightArea -> HazardCard -> FightView -> Html Msg
+renderFightingHazard commonState fightArea hazard fightView =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
-            , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea commonState.phase
+            , renderFightDash
+                { canDraw = PlayerDeck.canDraw commonState.playerDeck
+                , fightArea = fightArea
+                , renderEnemy = renderHazard commonState.phase hazard
+                , freeCards = HazardCard.getFreeCards hazard
+                , enemyStrength = HazardCard.getStrength hazard
+                }
+
+            -- , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea hazard commonState.phase
             , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
             ]
         ]
@@ -1417,15 +1438,40 @@ renderFightingHazard commonState fightArea fightView =
 -- FinalShowdown
 
 
-renderFinalShowdown : CommonState -> FightArea PirateCard -> FightView -> Html Msg
-renderFinalShowdown commonState fightArea fightView =
+renderPirate : PirateCard -> Html Msg
+renderPirate pirate =
+    div [ class "flex flex-col bg-orange-300 h-32 w-64 p-2 border-8 border-orange-600 rounded border-white text-orange-800 relative" ]
+        [ div [ class "font-bold mb-2" ] [ text "Pirate" ]
+        , div [ class "flex items-center mb-1" ]
+            [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
+            , div [ class statCircle ]
+                [ text <| String.fromInt <| PirateCard.getStrength pirate
+                ]
+            ]
+        , div [ class "flex items-center" ]
+            [ div [ class "text-sm mr-2" ] [ text "Free cards: " ]
+            , div [ class statWhite ]
+                [ text <| String.fromInt <| PirateCard.getFreeCards pirate
+                ]
+            ]
+        ]
+
+
+renderFinalShowdown : CommonState -> FightArea -> PirateCard -> FightView -> Html Msg
+renderFinalShowdown commonState fightArea pirate fightView =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
-            , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea commonState.phase
+            , renderFightDash
+                { canDraw = PlayerDeck.canDraw commonState.playerDeck
+                , fightArea = fightArea
+                , renderEnemy = renderPirate pirate
+                , freeCards = PirateCard.getFreeCards pirate
+                , enemyStrength = PirateCard.getStrength pirate
+                }
             , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
             ]
         ]
@@ -1541,8 +1587,8 @@ view model =
                 GameInProgress (HazardSelection commonState hazardOption) ->
                     renderHazardSelection commonState hazardOption
 
-                GameInProgress (FightingHazard commonState fightArea fightView) ->
-                    renderFightingHazard commonState fightArea fightView
+                GameInProgress (FightingHazard commonState fightArea hazard fightView) ->
+                    renderFightingHazard commonState fightArea hazard fightView
 
                 GameInProgress (ResolvingFight commonState (PlayerWon reward)) ->
                     renderPlayerWon commonState reward
@@ -1550,10 +1596,7 @@ view model =
                 GameInProgress (ResolvingFight commonState (PlayerLost healthLost playerCardList)) ->
                     renderPlayerLost commonState healthLost playerCardList
 
-                GameInProgress (FinalShowdown commonState fightArea fightView) ->
-                    renderFinalShowdown commonState fightArea fightView
-
-                GameInProgress _ ->
-                    h2 [ class "text-xl" ] [ text "Game in progress (phase not implemented)" ]
+                GameInProgress (FinalShowdown commonState fightArea pirate fightView) ->
+                    renderFinalShowdown commonState fightArea pirate fightView
             ]
         ]
