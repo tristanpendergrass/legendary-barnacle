@@ -184,7 +184,7 @@ type Msg
     | CancelAbilitiesInUse
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
-    | SortDiscard SortArea.SortIndex
+    | SortToggleDiscard SortArea.SortIndex
     | SortReveal
     | SelectCopy Int
     | SelectDouble Int
@@ -683,19 +683,19 @@ updateGameInProgress msg gameState =
             in
             ( GameInProgress (FinalShowdown commonState fightArea pirate (SortView newSortArea)), Cmd.none )
 
-        ( SortDiscard discardType, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
+        ( SortToggleDiscard sortIndex, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
                 newSortArea =
-                    SortArea.toggleDiscard discardType sortArea
+                    SortArea.toggleDiscard sortIndex sortArea
             in
             ( GameInProgress (FightingHazard commonState fightArea hazard (SortView newSortArea)), Cmd.none )
 
-        ( SortDiscard discardType, FinalShowdown commonState fightArea pirate (SortView sortArea) ) ->
+        ( SortToggleDiscard sortIndex, FinalShowdown commonState fightArea pirate (SortView sortArea) ) ->
             let
                 newSortArea : SortArea PlayerCard
                 newSortArea =
-                    SortArea.toggleDiscard discardType sortArea
+                    SortArea.toggleDiscard sortIndex sortArea
             in
             ( GameInProgress (FinalShowdown commonState fightArea pirate (SortView newSortArea)), Cmd.none )
 
@@ -1436,6 +1436,209 @@ renderPlayedCard fightView index playedCard =
                 ]
 
 
+renderSortAreaCard : SortArea.SortIndex -> PlayerCard -> Bool -> Html Msg
+renderSortAreaCard sortIndex playerCard isDiscarded =
+    div [ class "flex flex-col items-center" ]
+        [ div [ class "mr-4 mb-4" ] [ renderPlayerCard playerCard False ]
+        , if isDiscarded then
+            div [] [ text "Marked for discard" ]
+
+          else
+            div [] []
+
+        -- TODO: support change sort order
+        , div [ class "flex items-center" ]
+            [ button [] [ text "<" ]
+            , button [ class transparentButton, onClick (SortToggleDiscard sortIndex) ] [ text "Toggle discard" ]
+            ]
+        ]
+
+
+renderSortArea : SortArea PlayerCard -> Html Msg
+renderSortArea sortArea =
+    let
+        renderButtons : Html Msg
+        renderButtons =
+            div [ class "flex flex-col justify-center items-center space-y-2 mx-8 mb-4" ]
+                [ button [ class transparentButton, onClick SortReveal ] [ text "Reveal" ]
+                , button [ class transparentButton, onClick SortFinish ] [ text "Finish" ]
+                ]
+
+        renderDiscardCard : PlayerCard -> Html Msg
+        renderDiscardCard playerCard =
+            div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                [ renderPlayerCard playerCard False
+                , div [] [ text "Marked for discard" ]
+                , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                ]
+    in
+    case sortArea of
+        SortArea.OneRevealed first SortArea.DiscardZeroOfOne ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard first False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                    ]
+                ]
+
+        SortArea.OneRevealed first SortArea.DiscardOneOfOne ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , renderDiscardCard first
+                ]
+
+        SortArea.TwoRevealed first second SortArea.DiscardZeroOfTwo ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard first False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                        , button [ onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard second False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Second) ] [ text "Toggle discard" ]
+                        , button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                ]
+
+        SortArea.TwoRevealed first second SortArea.DiscardOneOfTwo ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , renderDiscardCard first
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard second False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Second) ] [ text "Toggle discard" ]
+                    ]
+                ]
+
+        SortArea.TwoRevealed first second SortArea.DiscardTwoOfTwo ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard first False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                    ]
+                , renderDiscardCard second
+                ]
+
+        SortArea.ThreeRevealed first second third SortArea.DiscardZeroOfThree ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard first False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                        , button [ onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard second False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Second) ] [ text "Toggle discard" ]
+                        , button [ onClick (SortChangeOrder SortArea.TwoToThree) ] [ text ">" ]
+                        ]
+                    ]
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard third False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ onClick (SortChangeOrder SortArea.TwoToThree) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Third) ] [ text "Toggle discard" ]
+                        , button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                ]
+
+        SortArea.ThreeRevealed first second third SortArea.DiscardOneOfThree ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , renderDiscardCard first
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard second False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Second) ] [ text "Toggle discard" ]
+                        , button [ onClick (SortChangeOrder SortArea.TwoToThree) ] [ text ">" ]
+                        ]
+                    ]
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard third False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ onClick (SortChangeOrder SortArea.TwoToThree) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Third) ] [ text "Toggle discard" ]
+                        , button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                ]
+
+        SortArea.ThreeRevealed first second third SortArea.DiscardTwoOfThree ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard first False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                        , button [ onClick (SortChangeOrder SortArea.OneToThree) ] [ text ">" ]
+                        ]
+                    ]
+                , renderDiscardCard second
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard third False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ onClick (SortChangeOrder SortArea.OneToThree) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Third) ] [ text "Toggle discard" ]
+                        , button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                ]
+
+        SortArea.ThreeRevealed first second third SortArea.DiscardThreeOfThree ->
+            div [ class "flex flex-wrap" ]
+                [ renderButtons
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard first False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ class "opacity-0", onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.First) ] [ text "Toggle discard" ]
+                        , button [ onClick (SortChangeOrder SortArea.OneToTwo) ] [ text ">" ]
+                        ]
+                    ]
+                , div [ class "flex flex-col items-center mr-4 space-y-2" ]
+                    [ renderPlayerCard second False
+                    , div [ class "opacity-0" ] [ text "Marked for discard" ]
+                    , div [ class "flex" ]
+                        [ button [ onClick (SortChangeOrder SortArea.OneToTwo) ] [ text "<" ]
+                        , button [ class transparentButton, onClick (SortToggleDiscard SortArea.Second) ] [ text "Toggle discard" ]
+                        , button [ class "opacity-0", onClick (SortChangeOrder SortArea.TwoToThree) ] [ text ">" ]
+                        ]
+                    ]
+                , renderDiscardCard third
+                ]
+
+
 renderFightingHazard : CommonState -> FightArea -> HazardCard -> FightView -> Html Msg
 renderFightingHazard commonState fightArea hazard fightView =
     div [ class "flex flex-row flex-grow space-x-8" ]
@@ -1452,9 +1655,12 @@ renderFightingHazard commonState fightArea hazard fightView =
                 , enemyStrength = HazardCard.getStrength hazard
                 , endFightResult = attemptEndFightHazard commonState.phase fightArea hazard
                 }
+            , case fightView of
+                SortView sortArea ->
+                    renderSortArea sortArea
 
-            -- , renderFightDash (PlayerDeck.canDraw commonState.playerDeck) fightArea hazard commonState.phase
-            , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
+                _ ->
+                    div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
             ]
         ]
 

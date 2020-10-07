@@ -1,4 +1,16 @@
-module SortArea exposing (ChangeOrderType, SortArea, SortIndex, attemptReveal, changeOrder, create, getCards, toggleDiscard)
+module SortArea exposing
+    ( ChangeOrderType(..)
+    , DiscardChoiceOne(..)
+    , DiscardChoiceThree(..)
+    , DiscardChoiceTwo(..)
+    , SortArea(..)
+    , SortIndex(..)
+    , attemptReveal
+    , changeOrder
+    , create
+    , getCards
+    , toggleDiscard
+    )
 
 
 type SortArea a
@@ -105,7 +117,7 @@ toggleDiscard : SortIndex -> SortArea a -> SortArea a
 toggleDiscard sortIndex sortArea =
     case ( sortArea, sortIndex ) of
         ( OneRevealed first DiscardZeroOfOne, First ) ->
-            OneRevealed first DiscardZeroOfOne
+            OneRevealed first DiscardOneOfOne
 
         ( OneRevealed first DiscardOneOfOne, First ) ->
             OneRevealed first DiscardZeroOfOne
