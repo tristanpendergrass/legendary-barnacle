@@ -211,48 +211,25 @@ update msg model =
             ( model, Cmd.none )
 
 
-toFinalShowdown : CommonState -> GameState
-toFinalShowdown commonState =
-    FinalShowdown
-        commonState
-        FightArea.createFightArea
-        commonState.pirateOne
-        NormalFightView
-
-
 {-| Returns the game state to hazard selection with the phase updated, or moves to the final showdown if already in PhaseRed
 -}
-handlePhaseComplete : Maybe HazardCard -> CommonState -> GameState
-handlePhaseComplete maybeHazardCard incompleteCommonState =
-    -- TODO revisit this function; it is confusing and should be refactored if possible
+handlePhaseComplete : CommonState -> GameState
+handlePhaseComplete commonState =
     let
-        leftoverCards : List HazardCard
-        leftoverCards =
-            case maybeHazardCard of
-                Just card ->
-                    [ card ]
-
-                Nothing ->
-                    []
-
-        commonState : CommonState
-        commonState =
-            { incompleteCommonState | hazardDeck = HazardDeck.discard leftoverCards incompleteCommonState.hazardDeck }
-
-        toHazardSelection : Phase -> GameState
-        toHazardSelection phase =
+        toPhase : Phase -> GameState
+        toPhase phase =
             let
                 ( shuffledHazardDeck, newSeed ) =
                     Random.step (HazardDeck.reshuffle commonState.hazardDeck) commonState.seed
-
-                drawTwiceResult : HazardDeck.DrawTwiceResult
-                drawTwiceResult =
-                    HazardDeck.drawTwice shuffledHazardDeck
             in
-            case drawTwiceResult of
+            case HazardDeck.drawTwice shuffledHazardDeck of
                 HazardDeck.NothingDrawn ->
-                    -- Should never happen that all hazards run out, but if it does move directly to final showdown
-                    toFinalShowdown { commonState | phase = PhaseRed }
+                    -- Should rarely happen that all hazards run out before phase is red, but if it does move directly to final showdown
+                    FinalShowdown
+                        { commonState | phase = PhaseRed }
+                        FightArea.createFightArea
+                        commonState.pirateOne
+                        NormalFightView
 
                 HazardDeck.DrewOne newHazardDeck hazardCard ->
                     HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = newSeed } (One hazardCard)
@@ -262,13 +239,17 @@ handlePhaseComplete maybeHazardCard incompleteCommonState =
     in
     case commonState.phase of
         PhaseRed ->
-            toFinalShowdown { commonState | phase = PhaseRed }
+            FinalShowdown
+                { commonState | phase = PhaseRed }
+                FightArea.createFightArea
+                commonState.pirateOne
+                NormalFightView
 
         PhaseYellow ->
-            toHazardSelection PhaseRed
+            toPhase PhaseRed
 
         PhaseGreen ->
-            toHazardSelection PhaseYellow
+            toPhase PhaseYellow
 
 
 toFightingHazard : HazardCard -> CommonState -> GameState
@@ -461,7 +442,16 @@ updateGameInProgress msg gameState =
             ( GameInProgress (toFightingHazard hazard commonState), Cmd.none )
 
         ( ChooseSkipHazard, HazardSelection commonState (One card) ) ->
-            ( GameInProgress (handlePhaseComplete (Just card) commonState), Cmd.none )
+            let
+                newHazardDeck : HazardDeck
+                newHazardDeck =
+                    HazardDeck.discard [ card ] commonState.hazardDeck
+
+                newCommonState : CommonState
+                newCommonState =
+                    { commonState | hazardDeck = newHazardDeck }
+            in
+            ( GameInProgress (handlePhaseComplete newCommonState), Cmd.none )
 
         -- Fight
         ( DrawNormally, FightingHazard commonState fightArea hazardCard NormalFightView ) ->
@@ -935,7 +925,7 @@ updateGameInProgress msg gameState =
             in
             case HazardDeck.drawTwice commonState.hazardDeck of
                 HazardDeck.NothingDrawn ->
-                    ( GameInProgress (handlePhaseComplete Nothing newCommonState), Cmd.none )
+                    ( GameInProgress (handlePhaseComplete newCommonState), Cmd.none )
 
                 HazardDeck.DrewOne newHazardDeck card ->
                     ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (One card)), Cmd.none )
@@ -960,7 +950,7 @@ updateGameInProgress msg gameState =
             case HazardDeck.drawTwice commonState.hazardDeck of
                 -- TODO: check if this logic is exactly the same as some other spot, refactor into a function
                 HazardDeck.NothingDrawn ->
-                    ( GameInProgress (handlePhaseComplete Nothing newCommonState), Cmd.none )
+                    ( GameInProgress (handlePhaseComplete newCommonState), Cmd.none )
 
                 HazardDeck.DrewOne newHazardDeck card ->
                     ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (One card)), Cmd.none )
@@ -1009,8 +999,13 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Just ( drawnCard, newCommonState ) ->
                     Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
+        -- TODO: return Err for all of these card-targeting abilities if no other eligible cards
         Copy ->
-            Ok ( commonState, setCardInUse, SelectCopyView index )
+            if List.length (FightArea.getAbilityCards fightArea) <= 1 then
+                Err "Must be a card to copy"
+
+            else
+                Ok ( commonState, setCardInUse, SelectCopyView index )
 
         Double ->
             Ok ( commonState, setCardInUse, SelectDoubleView index )

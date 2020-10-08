@@ -9,6 +9,7 @@ module FightArea exposing
     , attemptPlayFreeCard
     , attemptUse
     , createFightArea
+    , getAbilityCards
     , getCard
     , getCards
     , getFreeCardsDrawn
@@ -368,3 +369,20 @@ isPhaseMinusOne (FightArea _ phaseMinusOne _) =
 getFreeCardsDrawn : FightArea -> Int
 getFreeCardsDrawn (FightArea _ _ freeCards) =
     freeCards
+
+
+getAbilityCards : FightArea -> List PlayerCard
+getAbilityCards (FightArea cards _ _) =
+    let
+        isAbilityCard : PlayedCard -> Bool
+        isAbilityCard playedCard =
+            case playedCard of
+                AbilityCard _ _ _ ->
+                    True
+
+                NormalCard _ _ ->
+                    False
+    in
+    cards
+        |> List.filter isAbilityCard
+        |> List.map fromPlayedCard
