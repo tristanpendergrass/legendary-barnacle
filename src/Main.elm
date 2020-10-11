@@ -73,6 +73,7 @@ type FightView
     | SelectBelowTheStackView Int
     | SelectExchangeView Int AndAnother
     | SelectDestroyView Int
+    | DrawSecondCardView Int
 
 
 type GameState
@@ -191,6 +192,7 @@ type Msg
     | SelectBelowTheStack Int
     | SelectExchange Int
     | SelectDestroy Int
+    | DrawSecondCard
       -- Resolving hazard
     | AcceptWin
     | ToggleLossDestroy Int
@@ -917,6 +919,22 @@ updateGameInProgress msg gameState =
                     Nothing ->
                         noOp
 
+        -- TODO: DrawSecondCard in FinalShowdown
+        ( DrawSecondCard, FightingHazard commonState fightArea hazard (DrawSecondCardView drawTwoIndex) ) ->
+            case drawCard commonState of
+                Nothing ->
+                    noOp
+
+                Just ( drawnCard, newCommonState ) ->
+                    let
+                        newFightArea : FightArea
+                        newFightArea =
+                            fightArea
+                                |> FightArea.playCard drawnCard
+                                |> FightArea.setInUseToUsed
+                    in
+                    ( GameInProgress (FightingHazard newCommonState newFightArea hazard NormalFightView), Cmd.none )
+
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
                 newCommonState : CommonState
@@ -1092,10 +1110,22 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                     Err "Unable to draw card"
 
                 Just ( drawnCard, newCommonState ) ->
-                    Ok ( newCommonState, setCardInUse, NormalFightView )
+                    Ok ( newCommonState, FightArea.playCard drawnCard setCardUsed, NormalFightView )
+
+        DrawTwo ->
+            case drawCard commonState of
+                Nothing ->
+                    Err "Unable to draw card"
+
+                Just ( drawnCard, newCommonState ) ->
+                    case drawCard newCommonState of
+                        Nothing ->
+                            Ok ( newCommonState, FightArea.playCard drawnCard setCardUsed, NormalFightView )
+
+                        Just _ ->
+                            Ok ( newCommonState, FightArea.playCard drawnCard setCardInUse, DrawSecondCardView index )
 
         {--|
-            DrawTwo
             ExchangeOne
             MinusOneLife
             MinusTwoLife
