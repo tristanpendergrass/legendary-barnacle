@@ -183,6 +183,7 @@ type Msg
     | EndFight
     | UseAbility Int
     | CancelAbilitiesInUse
+    | SetInUseToUsed
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
     | SortToggleDiscard SortArea.SortIndex
@@ -616,6 +617,12 @@ updateGameInProgress msg gameState =
 
         ( CancelAbilitiesInUse, FinalShowdown commonState fightArea pirate _ ) ->
             ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) pirate NormalFightView), Cmd.none )
+
+        ( SetInUseToUsed, FightingHazard commonState fightArea hazard _ ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.setInUseToUsed fightArea) hazard NormalFightView), Cmd.none )
+
+        ( SetInUseToUsed, FinalShowdown commonState fightArea hazard _ ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.setInUseToUsed fightArea) hazard NormalFightView), Cmd.none )
 
         ( SortFinish, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             let
@@ -1123,7 +1130,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                             Ok ( newCommonState, FightArea.playCard drawnCard setCardUsed, NormalFightView )
 
                         Just _ ->
-                            Ok ( newCommonState, FightArea.playCard drawnCard setCardInUse, DrawSecondCardView index )
+                            Ok ( newCommonState, FightArea.playCard drawnCard setCardInUse, DrawSecondCardView (index + 1) )
 
         {--|
             ExchangeOne
@@ -1536,6 +1543,16 @@ renderPlayedCard fightView index playedCard =
 
                         else
                             button [ class transparentButton, onClick <| SelectDestroy index ] [ text "Select Destroy" ]
+
+                    DrawSecondCardView drawTwoIndex ->
+                        if index == drawTwoIndex then
+                            div [ class "flex flex-col justify-center" ]
+                                [ button [ class transparentButton, onClick DrawSecondCard ] [ text "Draw Again" ]
+                                , button [ class transparentButton, onClick SetInUseToUsed ] [ text "Stop" ]
+                                ]
+
+                        else
+                            div [] []
 
                     _ ->
                         Debug.todo "Implement missing fight view"
