@@ -1020,7 +1020,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
         SortThree ->
             case drawCard commonState of
                 Nothing ->
-                    Err "Must be able to draw card"
+                    Err "Unable to draw card"
 
                 Just ( drawnCard, newCommonState ) ->
                     Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
@@ -1028,13 +1028,39 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
         -- TODO: return Err for all of these card-targeting abilities if no other eligible cards
         Copy ->
             if List.length (FightArea.getAbilityCards fightArea) <= 1 then
-                Err "Must be a card to copy"
+                Err "No card available to copy"
 
             else
                 Ok ( commonState, setCardInUse, SelectCopyView index )
 
         Double ->
-            Ok ( commonState, setCardInUse, SelectDoubleView index )
+            let
+                undoubledCardIndexes : List Int
+                undoubledCardIndexes =
+                    FightArea.undoubledCardIndexes fightArea
+
+                canDouble : Bool
+                canDouble =
+                    case undoubledCardIndexes of
+                        [] ->
+                            False
+
+                        [ singleIndex ] ->
+                            if singleIndex == index then
+                                -- Only card available to double is itself which isn't allowed
+                                False
+
+                            else
+                                True
+
+                        _ ->
+                            True
+            in
+            if canDouble then
+                Ok ( commonState, setCardInUse, SelectDoubleView index )
+
+            else
+                Err "No card available to double"
 
         BelowTheStack ->
             Ok ( commonState, setCardInUse, SelectBelowTheStackView index )

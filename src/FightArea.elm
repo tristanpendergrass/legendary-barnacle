@@ -22,6 +22,7 @@ module FightArea exposing
     , setInUseToUsed
     , setPhaseMinusOne
     , undoAllInUse
+    , undoubledCardIndexes
     )
 
 import FightStats exposing (SpecialAbility(..))
@@ -386,3 +387,27 @@ getAbilityCards (FightArea cards _ _) =
     cards
         |> List.filter isAbilityCard
         |> List.map fromPlayedCard
+
+
+undoubledCardIndexes : FightArea -> List Int
+undoubledCardIndexes (FightArea cards _ _) =
+    let
+        isUndoubled : PlayedCard -> Bool
+        isUndoubled playedCard =
+            case playedCard of
+                NormalCard _ isDoubled ->
+                    not isDoubled
+
+                AbilityCard _ _ isDoubled ->
+                    not isDoubled
+    in
+    List.Extra.indexedFoldl
+        (\index card accum ->
+            if isUndoubled card then
+                index :: accum
+
+            else
+                accum
+        )
+        []
+        cards
