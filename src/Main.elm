@@ -1066,10 +1066,18 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
         ExchangeTwo ->
-            Ok ( commonState, setCardInUse, SelectExchangeView index True )
+            if List.length (FightArea.getCards fightArea) <= 1 then
+                Err "No card available to exchange"
+
+            else
+                Ok ( commonState, setCardInUse, SelectExchangeView index True )
 
         Destroy ->
-            Ok ( commonState, setCardInUse, SelectDestroyView index )
+            if List.length (FightArea.getCards fightArea) <= 1 then
+                Err "No card available to destroy"
+
+            else
+                Ok ( commonState, setCardInUse, SelectDestroyView index )
 
         PhaseMinusOne ->
             if commonState.phase == PhaseGreen then
