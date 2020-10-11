@@ -1086,8 +1086,15 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
             else
                 Ok ( commonState, FightArea.setPhaseMinusOne setCardUsed, NormalFightView )
 
+        DrawOne ->
+            case drawCard commonState of
+                Nothing ->
+                    Err "Unable to draw card"
+
+                Just ( drawnCard, newCommonState ) ->
+                    Ok ( newCommonState, setCardInUse, NormalFightView )
+
         {--|
-            DrawOne
             DrawTwo
             ExchangeOne
             MinusOneLife
