@@ -1035,13 +1035,9 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
 
         Double ->
             let
-                undoubledCardIndexes : List Int
-                undoubledCardIndexes =
-                    FightArea.undoubledCardIndexes fightArea
-
-                canDouble : Bool
-                canDouble =
-                    case undoubledCardIndexes of
+                cardAvailableToDouble : Bool
+                cardAvailableToDouble =
+                    case FightArea.undoubledCardIndexes fightArea of
                         [] ->
                             False
 
@@ -1056,14 +1052,18 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                         _ ->
                             True
             in
-            if canDouble then
+            if cardAvailableToDouble then
                 Ok ( commonState, setCardInUse, SelectDoubleView index )
 
             else
                 Err "No card available to double"
 
         BelowTheStack ->
-            Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
+            if List.length (FightArea.getCards fightArea) <= 1 then
+                Err "No card available to put below the stack"
+
+            else
+                Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
         ExchangeTwo ->
             Ok ( commonState, setCardInUse, SelectExchangeView index True )
