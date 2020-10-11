@@ -976,20 +976,46 @@ attemptResolveAbility : ResolveAbilityArg -> Result String ( CommonState, FightA
 attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, fightArea } =
     case ability of
         PlusOneLife ->
-            let
-                newLifePoints : LifePoints.Counter
-                newLifePoints =
-                    LifePoints.incrementCounter commonState.lifePoints
+            if LifePoints.isFull commonState.lifePoints then
+                Err "Life counter is full"
 
-                newCommonState : CommonState
-                newCommonState =
-                    { commonState | lifePoints = newLifePoints }
+            else
+                let
+                    newLifePoints : LifePoints.Counter
+                    newLifePoints =
+                        LifePoints.incrementCounter commonState.lifePoints
 
-                newFightArea : FightArea
-                newFightArea =
-                    setCardUsed
-            in
-            Ok ( newCommonState, newFightArea, NormalFightView )
+                    newCommonState : CommonState
+                    newCommonState =
+                        { commonState | lifePoints = newLifePoints }
+
+                    newFightArea : FightArea
+                    newFightArea =
+                        setCardUsed
+                in
+                Ok ( newCommonState, newFightArea, NormalFightView )
+
+        PlusTwoLife ->
+            if LifePoints.isFull commonState.lifePoints then
+                Err "Life counter is full"
+
+            else
+                let
+                    newLifePoints : LifePoints.Counter
+                    newLifePoints =
+                        commonState.lifePoints
+                            |> LifePoints.incrementCounter
+                            |> LifePoints.incrementCounter
+
+                    newCommonState : CommonState
+                    newCommonState =
+                        { commonState | lifePoints = newLifePoints }
+
+                    newFightArea : FightArea
+                    newFightArea =
+                        setCardUsed
+                in
+                Ok ( newCommonState, newFightArea, NormalFightView )
 
         SortThree ->
             case drawCard commonState of
@@ -1026,6 +1052,15 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
             else
                 Ok ( commonState, FightArea.setPhaseMinusOne setCardUsed, NormalFightView )
 
+        {--|
+            DrawOne
+            DrawTwo
+            ExchangeOne
+            MinusOneLife
+            MinusTwoLife
+            HighestCardNull
+            StopDrawing
+        --}
         _ ->
             Debug.todo "Implement missing ability"
 

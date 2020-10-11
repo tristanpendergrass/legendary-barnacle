@@ -1,4 +1,4 @@
-module LifePoints exposing (Counter, createCounter, decrementCounter, getValue, incrementCounter)
+module LifePoints exposing (Counter, createCounter, decrementCounter, getValue, incrementCounter, isFull)
 
 
 clampLife : Int -> Int
@@ -42,3 +42,8 @@ incrementCounter (Counter oldValue) =
             clampLife (oldValue + 1)
     in
     Counter newValue
+
+
+isFull : Counter -> Bool
+isFull (Counter val) =
+    val >= 22
