@@ -21,6 +21,7 @@ module FightArea exposing
     , isPhaseMinusOne
     , playCard
     , setCardInUse
+    , setCardNotUsed
     , setCardUsed
     , setInUseToUsed
     , setPhaseMinusOne
@@ -203,6 +204,11 @@ setCardUsed =
 setCardInUse : Int -> FightArea -> FightArea
 setCardInUse =
     setUsedState InUse
+
+
+setCardNotUsed : Int -> FightArea -> FightArea
+setCardNotUsed =
+    setUsedState NotUsed
 
 
 replaceAtIndex : Int -> List a -> a -> List a

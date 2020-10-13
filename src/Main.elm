@@ -184,7 +184,7 @@ type Msg
     | DrawNormally
     | EndFight
     | UseAbility Int
-    | CancelAbilitiesInUse
+    | CancelAbility Int
     | SetInUseToUsed
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
@@ -614,12 +614,11 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.withDefault noOp
 
-        -- TODO: investigate if this can be changed to CancelAbility that takes an index for increased clarity
-        ( CancelAbilitiesInUse, FightingHazard commonState fightArea hazard _ ) ->
-            ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) hazard NormalFightView), Cmd.none )
+        ( CancelAbility cancelIndex, FightingHazard commonState fightArea hazard _ ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.setCardNotUsed cancelIndex fightArea) hazard NormalFightView), Cmd.none )
 
-        ( CancelAbilitiesInUse, FinalShowdown commonState fightArea pirate _ ) ->
-            ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) pirate NormalFightView), Cmd.none )
+        ( CancelAbility cancelIndex, FinalShowdown commonState fightArea pirate _ ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.setCardNotUsed cancelIndex fightArea) pirate NormalFightView), Cmd.none )
 
         -- TODO: investigate if this can be changed to SetUsed that takes an index for increased clarity
         ( SetInUseToUsed, FightingHazard commonState fightArea hazard _ ) ->
@@ -1576,7 +1575,11 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                             div [] []
 
                         else if index == doubleIndex then
-                            button [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500", onClick <| CancelAbilitiesInUse ] [ text "Cancel" ]
+                            button
+                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                                , onClick <| CancelAbility index
+                                ]
+                                [ text "Cancel" ]
 
                         else
                             button [ class transparentButton, onClick <| SelectDouble index ] [ text "Select Double" ]
@@ -1585,7 +1588,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                         if index == destroyIndex then
                             button
                                 [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                , onClick <| CancelAbilitiesInUse
+                                , onClick <| CancelAbility index
                                 ]
                                 [ text "Cancel" ]
 
@@ -1607,7 +1610,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                             if andAnother then
                                 button
                                     [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                    , onClick <| CancelAbilitiesInUse
+                                    , onClick <| CancelAbility index
                                     ]
                                     [ text "Cancel" ]
 
@@ -1623,7 +1626,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                         if index == copyIndex then
                             button
                                 [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                , onClick <| CancelAbilitiesInUse
+                                , onClick <| CancelAbility index
                                 ]
                                 [ text "Cancel" ]
 
