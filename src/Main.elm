@@ -614,12 +614,14 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.withDefault noOp
 
+        -- TODO: investigate if this can be changed to CancelAbility that takes an index for increased clarity
         ( CancelAbilitiesInUse, FightingHazard commonState fightArea hazard _ ) ->
             ( GameInProgress (FightingHazard commonState (FightArea.undoAllInUse fightArea) hazard NormalFightView), Cmd.none )
 
         ( CancelAbilitiesInUse, FinalShowdown commonState fightArea pirate _ ) ->
             ( GameInProgress (FinalShowdown commonState (FightArea.undoAllInUse fightArea) pirate NormalFightView), Cmd.none )
 
+        -- TODO: investigate if this can be changed to SetUsed that takes an index for increased clarity
         ( SetInUseToUsed, FightingHazard commonState fightArea hazard _ ) ->
             ( GameInProgress (FightingHazard commonState (FightArea.setInUseToUsed fightArea) hazard NormalFightView), Cmd.none )
 
@@ -734,7 +736,7 @@ updateGameInProgress msg gameState =
                 noOp
 
             else
-                FightArea.attemptUse index fightArea
+                FightArea.attemptCopy index fightArea
                     |> Result.andThen
                         (\( ability, _ ) ->
                             attemptResolveAbility
@@ -1600,6 +1602,23 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                         else
                             div [] []
 
+                    SelectExchangeView exchangeIndex andAnother ->
+                        if index == exchangeIndex then
+                            if andAnother then
+                                button
+                                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                                    , onClick <| CancelAbilitiesInUse
+                                    ]
+                                    [ text "Cancel" ]
+
+                            else
+                                div [ class "flex flex-col justify-center" ]
+                                    [ button [ class transparentButton, onClick <| SetInUseToUsed ] [ text "Stop" ] ]
+
+                        else
+                            div [ class "flex flex-col justify-center" ]
+                                [ button [ class transparentButton, onClick <| SelectExchange index ] [ text "Select Exchange" ] ]
+
                     SelectCopyView copyIndex ->
                         if index == copyIndex then
                             button
@@ -1631,8 +1650,14 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                                                 attemptResolveAbility arg
                                     in
                                     button
-                                        [ class transparentButton
-                                        , onClick <| SelectCopy index
+                                        [ class <|
+                                            if isAbilityDisabled then
+                                                disabledTransparentButton
+
+                                            else
+                                                transparentButton
+                                        , onClick <| UseAbility index
+                                        , disabled isAbilityDisabled
                                         ]
                                         [ text <| "Copy " ++ FightStats.getAbilityLabel ability ]
 

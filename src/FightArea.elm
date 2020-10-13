@@ -3,6 +3,7 @@ module FightArea exposing
     , IsDoubled
     , PlayedCard(..)
     , UsedState(..)
+    , attemptCopy
     , attemptDestroy
     , attemptDouble
     , attemptExchange
@@ -225,6 +226,18 @@ getCardWithUnusedAbility playedCard =
             Nothing
 
 
+getCardWithAbility : PlayedCard -> Maybe ( PlayedCard, SpecialAbility )
+getCardWithAbility playedCard =
+    case playedCard of
+        AbilityCard playerCard _ _ ->
+            playerCard
+                |> PlayerCard.getAbility
+                |> Maybe.map (\ability -> ( playedCard, ability ))
+
+        _ ->
+            Nothing
+
+
 setInUse : PlayedCard -> PlayedCard
 setInUse card =
     case card of
@@ -249,6 +262,22 @@ attemptUse : Int -> FightArea -> Result String ( SpecialAbility, { setCardInUse 
 attemptUse index (FightArea playedCards phaseMinusOne freeCardsDrawn) =
     List.Extra.getAt index playedCards
         |> Maybe.andThen getCardWithUnusedAbility
+        |> Maybe.map
+            (\( playedCard, ability ) ->
+                Ok
+                    ( ability
+                    , { setCardInUse = FightArea (replaceAtIndex index playedCards (setInUse playedCard)) phaseMinusOne freeCardsDrawn
+                      , setCardUsed = FightArea (replaceAtIndex index playedCards (setUsed playedCard)) phaseMinusOne freeCardsDrawn
+                      }
+                    )
+            )
+        |> Maybe.withDefault (Err "Can't use card")
+
+
+attemptCopy : Int -> FightArea -> Result String ( SpecialAbility, { setCardInUse : FightArea, setCardUsed : FightArea } )
+attemptCopy index (FightArea playedCards phaseMinusOne freeCardsDrawn) =
+    List.Extra.getAt index playedCards
+        |> Maybe.andThen getCardWithAbility
         |> Maybe.map
             (\( playedCard, ability ) ->
                 Ok
