@@ -293,7 +293,7 @@ attemptCopy index (FightArea playedCards phaseMinusOne freeCardsDrawn) =
                       }
                     )
             )
-        |> Maybe.withDefault (Err "Can't use card")
+        |> Maybe.withDefault (Err "Can't copy card")
 
 
 setInUseToUsed : FightArea -> FightArea

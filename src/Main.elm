@@ -185,7 +185,7 @@ type Msg
     | EndFight
     | UseAbility Int
     | CancelAbility Int
-    | SetInUseToUsed
+    | SetUsed Int
     | SortFinish
     | SortChangeOrder SortArea.ChangeOrderType
     | SortToggleDiscard SortArea.SortIndex
@@ -614,18 +614,17 @@ updateGameInProgress msg gameState =
                     )
                 |> Result.withDefault noOp
 
-        ( CancelAbility cancelIndex, FightingHazard commonState fightArea hazard _ ) ->
-            ( GameInProgress (FightingHazard commonState (FightArea.setCardNotUsed cancelIndex fightArea) hazard NormalFightView), Cmd.none )
+        ( CancelAbility index, FightingHazard commonState fightArea hazard _ ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.setCardNotUsed index fightArea) hazard NormalFightView), Cmd.none )
 
-        ( CancelAbility cancelIndex, FinalShowdown commonState fightArea pirate _ ) ->
-            ( GameInProgress (FinalShowdown commonState (FightArea.setCardNotUsed cancelIndex fightArea) pirate NormalFightView), Cmd.none )
+        ( CancelAbility index, FinalShowdown commonState fightArea pirate _ ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.setCardNotUsed index fightArea) pirate NormalFightView), Cmd.none )
 
-        -- TODO: investigate if this can be changed to SetUsed that takes an index for increased clarity
-        ( SetInUseToUsed, FightingHazard commonState fightArea hazard _ ) ->
-            ( GameInProgress (FightingHazard commonState (FightArea.setInUseToUsed fightArea) hazard NormalFightView), Cmd.none )
+        ( SetUsed index, FightingHazard commonState fightArea hazard _ ) ->
+            ( GameInProgress (FightingHazard commonState (FightArea.setCardUsed index fightArea) hazard NormalFightView), Cmd.none )
 
-        ( SetInUseToUsed, FinalShowdown commonState fightArea hazard _ ) ->
-            ( GameInProgress (FinalShowdown commonState (FightArea.setInUseToUsed fightArea) hazard NormalFightView), Cmd.none )
+        ( SetUsed index, FinalShowdown commonState fightArea hazard _ ) ->
+            ( GameInProgress (FinalShowdown commonState (FightArea.setCardUsed index fightArea) hazard NormalFightView), Cmd.none )
 
         ( SortFinish, FightingHazard commonState fightArea hazard (SortView sortArea) ) ->
             let
@@ -1599,7 +1598,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                         if index == drawTwoIndex then
                             div [ class "flex flex-col justify-center" ]
                                 [ button [ class transparentButton, onClick DrawSecondCard ] [ text "Draw Again" ]
-                                , button [ class transparentButton, onClick SetInUseToUsed ] [ text "Stop" ]
+                                , button [ class transparentButton, onClick <| SetUsed index ] [ text "Stop" ]
                                 ]
 
                         else
@@ -1616,7 +1615,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
                             else
                                 div [ class "flex flex-col justify-center" ]
-                                    [ button [ class transparentButton, onClick <| SetInUseToUsed ] [ text "Stop" ] ]
+                                    [ button [ class transparentButton, onClick <| SetUsed index ] [ text "Stop" ] ]
 
                         else
                             div [ class "flex flex-col justify-center" ]
@@ -1659,7 +1658,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
                                             else
                                                 transparentButton
-                                        , onClick <| UseAbility index
+                                        , onClick <| SelectCopy index
                                         , disabled isAbilityDisabled
                                         ]
                                         [ text <| "Copy " ++ FightStats.getAbilityLabel ability ]
