@@ -1834,7 +1834,12 @@ renderFightingHazard commonState fightArea hazard fightView =
                     renderSortArea sortArea
 
                 _ ->
-                    div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard commonState fightArea fightView) (FightArea.getPlayedCards fightArea))
+                    div [ class "flex flex-wrap" ]
+                        (fightArea
+                            |> FightArea.getPlayedCards
+                            |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
+                            |> List.reverse
+                        )
             ]
         ]
 
@@ -1878,7 +1883,12 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 , enemyStrength = PirateCard.getStrength pirate
                 , endFightResult = attemptEndFinalShowdown fightArea pirate
                 }
-            , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard commonState fightArea fightView) (FightArea.getPlayedCards fightArea))
+            , div [ class "flex flex-wrap" ]
+                (fightArea
+                    |> FightArea.getPlayedCards
+                    |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
+                    |> List.reverse
+                )
             ]
         ]
 
