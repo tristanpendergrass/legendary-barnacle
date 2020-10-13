@@ -730,6 +730,9 @@ updateGameInProgress msg gameState =
             if index == copyIndex then
                 noOp
 
+            else if FightArea.getAbility index fightArea |> Maybe.map ((==) Copy) |> Maybe.withDefault False then
+                noOp
+
             else
                 FightArea.attemptUse index fightArea
                     |> Result.andThen
@@ -737,8 +740,8 @@ updateGameInProgress msg gameState =
                             attemptResolveAbility
                                 { ability = ability
                                 , index = index
-                                , setCardInUse = fightArea
-                                , setCardUsed = fightArea
+                                , setCardInUse = FightArea.setCardInUse copyIndex fightArea
+                                , setCardUsed = FightArea.setCardUsed copyIndex fightArea
                                 , commonState = commonState
                                 , fightArea = fightArea
                                 }
@@ -1052,9 +1055,16 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Just ( drawnCard, newCommonState ) ->
                     Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
-        -- TODO: return Err for all of these card-targeting abilities if no other eligible cards
         Copy ->
-            if List.length (FightArea.getAbilityCards fightArea) <= 1 then
+            let
+                noCopyableCard : Bool
+                noCopyableCard =
+                    FightArea.getAbilityCards fightArea
+                        |> List.filterMap PlayerCard.getAbility
+                        |> List.filter ((==) Copy)
+                        |> List.isEmpty
+            in
+            if noCopyableCard then
                 Err "No card available to copy"
 
             else
@@ -1092,6 +1102,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
             else
                 Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
+        -- TODO: check that ExchangeTwo works correctly when using copy and canceling after one
         ExchangeTwo ->
             if List.length (FightArea.getCards fightArea) <= 2 then
                 Err "No card available to exchange"
@@ -1567,7 +1578,11 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
                     SelectDestroyView destroyIndex ->
                         if index == destroyIndex then
-                            button [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500", onClick <| CancelAbilitiesInUse ] [ text "Cancel" ]
+                            button
+                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                                , onClick <| CancelAbilitiesInUse
+                                ]
+                                [ text "Cancel" ]
 
                         else
                             button [ class transparentButton, onClick <| SelectDestroy index ] [ text "Select Destroy" ]
@@ -1581,6 +1596,45 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
                         else
                             div [] []
+
+                    SelectCopyView copyIndex ->
+                        if index == copyIndex then
+                            button
+                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                                , onClick <| CancelAbilitiesInUse
+                                ]
+                                [ text "Cancel" ]
+
+                        else
+                            case PlayerCard.getAbility card of
+                                Just Copy ->
+                                    div [] []
+
+                                Just ability ->
+                                    let
+                                        arg : ResolveAbilityArg
+                                        arg =
+                                            { ability = ability
+                                            , index = index
+                                            , setCardInUse = fightArea
+                                            , setCardUsed = fightArea
+                                            , commonState = commonState
+                                            , fightArea = fightArea
+                                            }
+
+                                        isAbilityDisabled : Bool
+                                        isAbilityDisabled =
+                                            Result.Extra.isErr <|
+                                                attemptResolveAbility arg
+                                    in
+                                    button
+                                        [ class transparentButton
+                                        , onClick <| SelectCopy index
+                                        ]
+                                        [ text <| "Copy " ++ FightStats.getAbilityLabel ability ]
+
+                                Nothing ->
+                                    div [] []
 
                     _ ->
                         Debug.todo "Implement missing fight view"
