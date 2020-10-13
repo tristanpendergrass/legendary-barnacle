@@ -739,7 +739,7 @@ updateGameInProgress msg gameState =
                         (\( ability, _ ) ->
                             attemptResolveAbility
                                 { ability = ability
-                                , index = index
+                                , index = copyIndex
                                 , setCardInUse = FightArea.setCardInUse copyIndex fightArea
                                 , setCardUsed = FightArea.setCardUsed copyIndex fightArea
                                 , commonState = commonState
@@ -756,15 +756,18 @@ updateGameInProgress msg gameState =
             if index == copyIndex then
                 noOp
 
+            else if FightArea.getAbility index fightArea |> Maybe.map ((==) Copy) |> Maybe.withDefault False then
+                noOp
+
             else
                 FightArea.attemptUse index fightArea
                     |> Result.andThen
                         (\( ability, _ ) ->
                             attemptResolveAbility
                                 { ability = ability
-                                , index = index
-                                , setCardInUse = fightArea
-                                , setCardUsed = fightArea
+                                , index = copyIndex
+                                , setCardInUse = FightArea.setCardInUse copyIndex fightArea
+                                , setCardUsed = FightArea.setCardUsed copyIndex fightArea
                                 , commonState = commonState
                                 , fightArea = fightArea
                                 }

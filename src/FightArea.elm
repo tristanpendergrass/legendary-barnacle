@@ -168,60 +168,40 @@ isInUse playedCard =
             False
 
 
+setUsedState : UsedState -> Int -> FightArea -> FightArea
+setUsedState newUsedState index (FightArea cards phaseMinusOne freeCardsDrawn) =
+    let
+        mapCard : PlayedCard -> PlayedCard
+        mapCard playedCard =
+            case playedCard of
+                NormalCard _ _ ->
+                    playedCard
 
--- TODO: refactor this and setCardInUse to eliminate duplicated logic
+                AbilityCard card _ isDoubled ->
+                    AbilityCard card newUsedState isDoubled
+
+        setUsedIfIndexMatches : Int -> PlayedCard -> PlayedCard
+        setUsedIfIndexMatches i playedCard =
+            if i == index then
+                mapCard playedCard
+
+            else
+                playedCard
+    in
+    FightArea
+        (List.indexedMap setUsedIfIndexMatches cards)
+        phaseMinusOne
+        freeCardsDrawn
 
 
 setCardUsed : Int -> FightArea -> FightArea
-setCardUsed index (FightArea cards phaseMinusOne freeCardsDrawn) =
-    let
-        useCard : PlayedCard -> PlayedCard
-        useCard playedCard =
-            case playedCard of
-                NormalCard _ _ ->
-                    playedCard
-
-                AbilityCard card _ isDoubled ->
-                    AbilityCard card Used isDoubled
-
-        setUsedIfIndexMatches : Int -> PlayedCard -> PlayedCard
-        setUsedIfIndexMatches i playedCard =
-            if i == index then
-                useCard playedCard
-
-            else
-                playedCard
-    in
-    FightArea
-        (List.indexedMap setUsedIfIndexMatches cards)
-        phaseMinusOne
-        freeCardsDrawn
+setCardUsed =
+    setUsedState Used
 
 
 setCardInUse : Int -> FightArea -> FightArea
-setCardInUse index (FightArea cards phaseMinusOne freeCardsDrawn) =
-    let
-        useCard : PlayedCard -> PlayedCard
-        useCard playedCard =
-            case playedCard of
-                NormalCard _ _ ->
-                    playedCard
-
-                AbilityCard card _ isDoubled ->
-                    AbilityCard card InUse isDoubled
-
-        setUsedIfIndexMatches : Int -> PlayedCard -> PlayedCard
-        setUsedIfIndexMatches i playedCard =
-            if i == index then
-                useCard playedCard
-
-            else
-                playedCard
-    in
-    FightArea
-        (List.indexedMap setUsedIfIndexMatches cards)
-        phaseMinusOne
-        freeCardsDrawn
+setCardInUse =
+    setUsedState InUse
 
 
 replaceAtIndex : Int -> List a -> a -> List a
