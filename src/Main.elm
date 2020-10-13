@@ -165,8 +165,8 @@ init _ =
             Two leftHazard rightHazard
     in
     -- ( GameOver Win, Cmd.none )
-    -- ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
-    ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
+    -- ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
+    ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
 
 
 
@@ -934,7 +934,6 @@ updateGameInProgress msg gameState =
                     Nothing ->
                         noOp
 
-        -- TODO: DrawSecondCard in FinalShowdown
         ( DrawSecondCard, FightingHazard commonState fightArea hazard (DrawSecondCardView drawTwoIndex) ) ->
             case drawCard commonState of
                 Nothing ->
@@ -949,6 +948,21 @@ updateGameInProgress msg gameState =
                                 |> FightArea.setInUseToUsed
                     in
                     ( GameInProgress (FightingHazard newCommonState newFightArea hazard NormalFightView), Cmd.none )
+
+        ( DrawSecondCard, FinalShowdown commonState fightArea pirate (DrawSecondCardView drawTwoIndex) ) ->
+            case drawCard commonState of
+                Nothing ->
+                    noOp
+
+                Just ( drawnCard, newCommonState ) ->
+                    let
+                        newFightArea : FightArea
+                        newFightArea =
+                            fightArea
+                                |> FightArea.playCard drawnCard
+                                |> FightArea.setInUseToUsed
+                    in
+                    ( GameInProgress (FinalShowdown newCommonState newFightArea pirate NormalFightView), Cmd.none )
 
         ( AcceptWin, ResolvingFight commonState (PlayerWon hazardCard) ) ->
             let
@@ -1064,7 +1078,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 noCopyableCard =
                     FightArea.getAbilityCards fightArea
                         |> List.filterMap PlayerCard.getAbility
-                        |> List.filter ((==) Copy)
+                        |> List.filter ((/=) Copy)
                         |> List.isEmpty
             in
             if noCopyableCard then
@@ -1883,12 +1897,17 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 , enemyStrength = PirateCard.getStrength pirate
                 , endFightResult = attemptEndFinalShowdown fightArea pirate
                 }
-            , div [ class "flex flex-wrap" ]
-                (fightArea
-                    |> FightArea.getPlayedCards
-                    |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
-                    |> List.reverse
-                )
+            , case fightView of
+                SortView sortArea ->
+                    renderSortArea sortArea
+
+                _ ->
+                    div [ class "flex flex-wrap" ]
+                        (fightArea
+                            |> FightArea.getPlayedCards
+                            |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
+                            |> List.reverse
+                        )
             ]
         ]
 
