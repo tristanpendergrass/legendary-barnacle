@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Ability exposing (Ability)
 import AgingCard exposing (AgingCard)
 import Browser
 import FightArea exposing (FightArea)
@@ -16,6 +17,7 @@ import PlayerCard exposing (PlayerCard)
 import PlayerDeck exposing (PlayerDeck)
 import Random
 import Random.List
+import Result.Extra
 import RobinsonCard exposing (RobinsonCard)
 import SelectionList exposing (SelectionList)
 import SortArea exposing (SortArea)
@@ -1091,7 +1093,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
         ExchangeTwo ->
-            if List.length (FightArea.getCards fightArea) <= 1 then
+            if List.length (FightArea.getCards fightArea) <= 2 then
                 Err "No card available to exchange"
 
             else
@@ -1495,8 +1497,8 @@ disabledTransparentButton =
     "inline-block border border-gray-500 rounded px-2 py-1 text-gray-500"
 
 
-renderPlayedCard : FightView -> Int -> FightArea.PlayedCard -> Html Msg
-renderPlayedCard fightView index playedCard =
+renderPlayedCard : CommonState -> FightArea -> FightView -> Int -> FightArea.PlayedCard -> Html Msg
+renderPlayedCard commonState fightArea fightView index playedCard =
     case playedCard of
         FightArea.NormalCard card isDoubled ->
             div [ class "flex flex-col items-center" ]
@@ -1515,7 +1517,33 @@ renderPlayedCard fightView index playedCard =
                     NormalFightView ->
                         case ( PlayerCard.getAbility card, usedState ) of
                             ( Just ability, FightArea.NotUsed ) ->
-                                button [ class transparentButton, onClick <| UseAbility index ] [ text <| FightStats.getAbilityLabel ability ]
+                                let
+                                    arg : ResolveAbilityArg
+                                    arg =
+                                        { ability = ability
+                                        , index = index
+                                        , setCardInUse = fightArea
+                                        , setCardUsed = fightArea
+                                        , commonState = commonState
+                                        , fightArea = fightArea
+                                        }
+
+                                    isAbilityDisabled : Bool
+                                    isAbilityDisabled =
+                                        Result.Extra.isErr <|
+                                            attemptResolveAbility arg
+                                in
+                                button
+                                    [ class <|
+                                        if isAbilityDisabled then
+                                            disabledTransparentButton
+
+                                        else
+                                            transparentButton
+                                    , onClick <| UseAbility index
+                                    , disabled isAbilityDisabled
+                                    ]
+                                    [ text <| FightStats.getAbilityLabel ability ]
 
                             ( Just _, FightArea.InUse ) ->
                                 div [ class "px-2 py-1" ] [ text "In Use" ]
@@ -1722,7 +1750,7 @@ renderFightingHazard commonState fightArea hazard fightView =
                     renderSortArea sortArea
 
                 _ ->
-                    div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
+                    div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard commonState fightArea fightView) (FightArea.getPlayedCards fightArea))
             ]
         ]
 
@@ -1766,7 +1794,7 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 , enemyStrength = PirateCard.getStrength pirate
                 , endFightResult = attemptEndFinalShowdown fightArea pirate
                 }
-            , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard fightView) (FightArea.getPlayedCards fightArea))
+            , div [ class "flex flex-wrap" ] (List.indexedMap (renderPlayedCard commonState fightArea fightView) (FightArea.getPlayedCards fightArea))
             ]
         ]
 
