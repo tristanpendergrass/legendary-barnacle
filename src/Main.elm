@@ -97,6 +97,16 @@ type Model
     | GameOver GameOverState
 
 
+isNormalFightView : FightView -> Bool
+isNormalFightView fightView =
+    case fightView of
+        NormalFightView ->
+            True
+
+        _ ->
+            False
+
+
 addTwoShuffleAndDraw : a -> a -> List a -> Random.Generator ( a, a, List a )
 addTwoShuffleAndDraw first second rest =
     (first :: second :: rest)
@@ -130,7 +140,7 @@ init _ =
         -- playerDeck =
         --     robinsonCards
         --         |> List.map PlayerCard.fromRobinsonCard
-        --         |> PlayerDeck.create agingCards
+        -- |> PlayerDeck.create agingCards
         playerDeck : PlayerDeck
         playerDeck =
             HazardCard.getTestCards
@@ -349,6 +359,7 @@ type EndFightErr
     = MustDrawACard
     | UnusedAgingCards
     | CantLoseFight
+    | CardInUse
 
 
 type EndFightOk
@@ -1527,7 +1538,6 @@ renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength, end
             [ div [ class "flex" ]
                 [ div [ class "flex items-end" ]
                     [ if canDraw then
-                        -- TODO: disable if not in NormalFightView
                         button [ class standardButton, onClick DrawNormally ] [ text "Draw" ]
 
                       else
@@ -1972,6 +1982,14 @@ renderFightingHazard commonState fightArea hazard fightView =
         displayPhase : Phase
         displayPhase =
             getAdjustedPhase (FightArea.getPhaseReduction fightArea) commonState.phase
+
+        endFightResult : Result EndFightErr EndFightOk
+        endFightResult =
+            if not (isNormalFightView fightView) then
+                Err CardInUse
+
+            else
+                attemptEndFightHazard commonState.phase fightArea hazard
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
@@ -1980,12 +1998,12 @@ renderFightingHazard commonState fightArea hazard fightView =
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
             , renderFightDash
-                { canDraw = PlayerDeck.canDraw commonState.playerDeck
+                { canDraw = PlayerDeck.canDraw commonState.playerDeck && isNormalFightView fightView
                 , fightArea = fightArea
                 , renderEnemy = renderHazard displayPhase hazard
                 , freeCards = HazardCard.getFreeCards hazard
                 , enemyStrength = getHazardStrength (FightArea.getPhaseReduction fightArea) commonState.phase hazard
-                , endFightResult = attemptEndFightHazard commonState.phase fightArea hazard
+                , endFightResult = endFightResult
                 }
             , renderFightArea commonState fightArea fightView
             ]
@@ -2017,6 +2035,15 @@ renderPirate pirate =
 
 renderFinalShowdown : CommonState -> FightArea -> PirateCard -> FightView -> Html Msg
 renderFinalShowdown commonState fightArea pirate fightView =
+    let
+        endFightResult : Result EndFightErr EndFightOk
+        endFightResult =
+            if not (isNormalFightView fightView) then
+                Err CardInUse
+
+            else
+                attemptEndFinalShowdown fightArea pirate
+    in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , div [ class rightColClasses ]
@@ -2024,12 +2051,12 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
                 ]
             , renderFightDash
-                { canDraw = PlayerDeck.canDraw commonState.playerDeck
+                { canDraw = PlayerDeck.canDraw commonState.playerDeck && isNormalFightView fightView
                 , fightArea = fightArea
                 , renderEnemy = renderPirate pirate
                 , freeCards = PirateCard.getFreeCards pirate
                 , enemyStrength = PirateCard.getStrength pirate
-                , endFightResult = attemptEndFinalShowdown fightArea pirate
+                , endFightResult = endFightResult
                 }
             , renderFightArea commonState fightArea fightView
             ]
