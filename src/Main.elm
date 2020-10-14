@@ -425,7 +425,7 @@ attemptEndFinalShowdown fightArea pirate =
             Ok EndFightPlayerWon
 
         else
-            Ok (EndFightPlayerLost strengthDifference)
+            Err CantLoseFight
 
 
 updateGameInProgress : Msg -> GameState -> ( Model, Cmd Msg )
