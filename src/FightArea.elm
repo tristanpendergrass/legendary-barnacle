@@ -1,6 +1,7 @@
 module FightArea exposing
     ( FightArea
     , IsDoubled
+    , PhaseReduction(..)
     , PlayedCard(..)
     , UsedState(..)
     , attemptCopy
@@ -15,16 +16,16 @@ module FightArea exposing
     , getCard
     , getCards
     , getFreeCardsDrawn
+    , getPhaseReduction
     , getPlayedCards
     , getPlayerStrength
     , hasUnusedAgingCards
-    , isPhaseMinusOne
     , playCard
+    , reducePhase
     , setCardInUse
     , setCardNotUsed
     , setCardUsed
     , setInUseToUsed
-    , setPhaseMinusOne
     , undoAllInUse
     , undoubledCardIndexes
     )
@@ -50,8 +51,10 @@ type PlayedCard
     | AbilityCard PlayerCard UsedState IsDoubled
 
 
-type alias PhaseMinusOne =
-    Bool
+type PhaseReduction
+    = NoPhaseReduction
+    | ReducePhaseOnce
+    | ReducePhaseTwice
 
 
 type alias FreeCardsDrawn =
@@ -59,7 +62,7 @@ type alias FreeCardsDrawn =
 
 
 type FightArea
-    = FightArea (List PlayedCard) PhaseMinusOne FreeCardsDrawn
+    = FightArea (List PlayedCard) PhaseReduction FreeCardsDrawn
 
 
 getPlayedCards : FightArea -> List PlayedCard
@@ -88,7 +91,7 @@ fromPlayedCard playedCard =
 
 createFightArea : FightArea
 createFightArea =
-    FightArea [] False 0
+    FightArea [] NoPhaseReduction 0
 
 
 playCard : PlayerCard -> FightArea -> FightArea
@@ -409,14 +412,27 @@ hasUnusedAgingCards (FightArea cards _ _) =
     List.any isUnusedAgingCard cards
 
 
-setPhaseMinusOne : FightArea -> FightArea
-setPhaseMinusOne (FightArea cards _ freeCardsDrawn) =
-    FightArea cards True freeCardsDrawn
+reducePhase : FightArea -> FightArea
+reducePhase (FightArea cards phaseReduction freeCardsDrawn) =
+    let
+        newPhaseReduction : PhaseReduction
+        newPhaseReduction =
+            case phaseReduction of
+                NoPhaseReduction ->
+                    ReducePhaseOnce
+
+                ReducePhaseOnce ->
+                    ReducePhaseTwice
+
+                ReducePhaseTwice ->
+                    ReducePhaseTwice
+    in
+    FightArea cards newPhaseReduction freeCardsDrawn
 
 
-isPhaseMinusOne : FightArea -> Bool
-isPhaseMinusOne (FightArea _ phaseMinusOne _) =
-    phaseMinusOne
+getPhaseReduction : FightArea -> PhaseReduction
+getPhaseReduction (FightArea _ phaseReduction _) =
+    phaseReduction
 
 
 getFreeCardsDrawn : FightArea -> Int
