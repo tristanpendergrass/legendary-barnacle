@@ -34,7 +34,7 @@ genius =
 
 eating : RobinsonCard
 eating =
-    RobinsonCard { title = "eating", strength = 0, specialAbility = Just PlusOneLife }
+    RobinsonCard { title = "eating", strength = 0, specialAbility = Just PlusTwoLife }
 
 
 getInitial : List RobinsonCard
