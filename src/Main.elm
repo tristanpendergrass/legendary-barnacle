@@ -74,7 +74,8 @@ type FightView
     | SelectCopyView Int
     | SelectDoubleView Int
     | SelectBelowTheStackView Int
-    | SelectExchangeView Int AndAnother
+    | SelectExchangeOneView Int
+    | SelectExchangeTwoView Int AndAnother
     | SelectDestroyView Int
     | DrawSecondCardView Int
 
@@ -194,7 +195,8 @@ type Msg
     | SelectCopy Int
     | SelectDouble Int
     | SelectBelowTheStack Int
-    | SelectExchange Int
+    | SelectExchangeOne Int
+    | SelectExchangeTwo Int
     | SelectDestroy Int
     | DrawSecondCard
       -- Resolving hazard
@@ -878,7 +880,47 @@ updateGameInProgress msg gameState =
                     Nothing ->
                         noOp
 
-        ( SelectExchange index, FightingHazard commonState fightArea hazard (SelectExchangeView exchangeIndex andAnother) ) ->
+        ( SelectExchangeOne index, FightingHazard commonState fightArea hazard (SelectExchangeOneView exchangeIndex) ) ->
+            if index == exchangeIndex then
+                noOp
+
+            else
+                case FightArea.attemptExchange index fightArea of
+                    Just ( playerCard, onExchange ) ->
+                        let
+                            ( drawnCard, newCommonState ) =
+                                discardCardAndDraw playerCard commonState
+
+                            newFightArea : FightArea
+                            newFightArea =
+                                FightArea.setInUseToUsed (onExchange drawnCard)
+                        in
+                        ( GameInProgress (FightingHazard newCommonState newFightArea hazard NormalFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
+        ( SelectExchangeOne index, FinalShowdown commonState fightArea pirate (SelectExchangeOneView exchangeIndex) ) ->
+            if index == exchangeIndex then
+                noOp
+
+            else
+                case FightArea.attemptExchange index fightArea of
+                    Just ( playerCard, onExchange ) ->
+                        let
+                            ( drawnCard, newCommonState ) =
+                                discardCardAndDraw playerCard commonState
+
+                            newFightArea : FightArea
+                            newFightArea =
+                                FightArea.setInUseToUsed (onExchange drawnCard)
+                        in
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea pirate NormalFightView), Cmd.none )
+
+                    Nothing ->
+                        noOp
+
+        ( SelectExchangeTwo index, FightingHazard commonState fightArea hazard (SelectExchangeTwoView exchangeIndex andAnother) ) ->
             if index == exchangeIndex then
                 noOp
 
@@ -892,7 +934,7 @@ updateGameInProgress msg gameState =
                             newFightView : FightView
                             newFightView =
                                 if andAnother then
-                                    SelectExchangeView exchangeIndex False
+                                    SelectExchangeTwoView exchangeIndex False
 
                                 else
                                     NormalFightView
@@ -910,7 +952,7 @@ updateGameInProgress msg gameState =
                     Nothing ->
                         noOp
 
-        ( SelectExchange index, FinalShowdown commonState fightArea pirate (SelectExchangeView exchangeIndex andAnother) ) ->
+        ( SelectExchangeTwo index, FinalShowdown commonState fightArea pirate (SelectExchangeTwoView exchangeIndex andAnother) ) ->
             if index == exchangeIndex then
                 noOp
 
@@ -924,7 +966,7 @@ updateGameInProgress msg gameState =
                             newFightView : FightView
                             newFightView =
                                 if andAnother then
-                                    SelectExchangeView exchangeIndex False
+                                    SelectExchangeTwoView exchangeIndex False
 
                                 else
                                     NormalFightView
@@ -1188,13 +1230,19 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
             else
                 Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
-        -- TODO: check that ExchangeTwo works correctly when using copy and canceling after one
         ExchangeTwo ->
             if List.length (FightArea.getCards fightArea) <= 2 then
                 Err "No card available to exchange"
 
             else
-                Ok ( commonState, setCardInUse, SelectExchangeView index True )
+                Ok ( commonState, setCardInUse, SelectExchangeTwoView index True )
+
+        ExchangeOne ->
+            if List.length (FightArea.getCards fightArea) <= 1 then
+                Err "No card available to exchange"
+
+            else
+                Ok ( commonState, setCardInUse, SelectExchangeOneView index )
 
         Destroy ->
             if List.length (FightArea.getCards fightArea) <= 1 then
@@ -1232,7 +1280,6 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                             Ok ( newCommonState, FightArea.playCard drawnCard setCardInUse, DrawSecondCardView (index + 1) )
 
         {--|
-            ExchangeOne
             MinusOneLife
             MinusTwoLife
             HighestCardNull
@@ -1674,7 +1721,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                         else
                             div [] []
 
-                    SelectExchangeView exchangeIndex andAnother ->
+                    SelectExchangeTwoView exchangeIndex andAnother ->
                         if index == exchangeIndex then
                             if andAnother then
                                 button
@@ -1689,7 +1736,19 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
                         else
                             div [ class "flex flex-col justify-center" ]
-                                [ button [ class transparentButton, onClick <| SelectExchange index ] [ text "Select Exchange" ] ]
+                                [ button [ class transparentButton, onClick <| SelectExchangeTwo index ] [ text "Select Exchange" ] ]
+
+                    SelectExchangeOneView exchangeIndex ->
+                        if index == exchangeIndex then
+                            button
+                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                                , onClick <| CancelAbility index
+                                ]
+                                [ text "Cancel" ]
+
+                        else
+                            div [ class "flex flex-col justify-center" ]
+                                [ button [ class transparentButton, onClick <| SelectExchangeOne index ] [ text "Select Exchange" ] ]
 
                     SelectCopyView copyIndex ->
                         if index == copyIndex then
@@ -1761,8 +1820,6 @@ renderSortAreaCard sortIndex playerCard isDiscarded =
 
           else
             div [] []
-
-        -- TODO: support change sort order
         , div [ class "flex items-center" ]
             [ button [] [ text "<" ]
             , button [ class transparentButton, onClick (SortToggleDiscard sortIndex) ] [ text "Toggle discard" ]
