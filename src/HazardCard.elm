@@ -39,6 +39,8 @@ type alias HazardStats =
 getTestCards : List HazardCard
 getTestCards =
     [ HazardCard withTheRaft { title = "mimicry", strength = 0, specialAbility = Just Copy }
+    , HazardCard withTheRaft { title = "deception", strength = 0, specialAbility = Just BelowTheStack }
+    , HazardCard furtherExploringTheIsland { title = "admin crimes", strength = 100, specialAbility = Nothing }
     , HazardCard furtherExploringTheIsland { title = "vision", strength = 2, specialAbility = Just SortThree }
     , HazardCard withTheRaft { title = "mimicry", strength = 0, specialAbility = Just Copy }
     , food

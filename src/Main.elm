@@ -813,8 +813,13 @@ updateGameInProgress msg gameState =
                         let
                             ( drawnCard, newCommonState ) =
                                 putOnBottomAndDraw playerCard commonState
+
+                            newFightArea : FightArea
+                            newFightArea =
+                                onExchange drawnCard
+                                    |> FightArea.setInUseToUsed
                         in
-                        ( GameInProgress (FightingHazard newCommonState (onExchange drawnCard) hazard NormalFightView), Cmd.none )
+                        ( GameInProgress (FightingHazard newCommonState newFightArea hazard NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
@@ -830,8 +835,13 @@ updateGameInProgress msg gameState =
                         let
                             ( drawnCard, newCommonState ) =
                                 putOnBottomAndDraw playerCard commonState
+
+                            newFightArea : FightArea
+                            newFightArea =
+                                onExchange drawnCard
+                                    |> FightArea.setInUseToUsed
                         in
-                        ( GameInProgress (FinalShowdown newCommonState (onExchange drawnCard) pirate NormalFightView), Cmd.none )
+                        ( GameInProgress (FinalShowdown newCommonState newFightArea pirate NormalFightView), Cmd.none )
 
                     Nothing ->
                         noOp
@@ -1679,6 +1689,17 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
                                 Nothing ->
                                     div [] []
+
+                    SelectBelowTheStackView belowTheStackIndex ->
+                        if index == belowTheStackIndex then
+                            button
+                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                                , onClick <| CancelAbility index
+                                ]
+                                [ text "Cancel" ]
+
+                        else
+                            button [ class transparentButton, onClick <| SelectBelowTheStack index ] [ text "Select Below the Stack" ]
 
                     _ ->
                         Debug.todo "Implement missing fight view"
