@@ -152,7 +152,7 @@ init _ =
         commonState =
             { seed = seedAfterPirateShuffle
             , lifePoints = LifePoints.createCounter 20
-            , phase = PhaseGreen
+            , phase = PhaseYellow
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
@@ -165,8 +165,8 @@ init _ =
             Two leftHazard rightHazard
     in
     -- ( GameOver Win, Cmd.none )
-    -- ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
-    ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
+    -- ( GameInProgress (FinalShowdown commonState FightArea.createFightArea pirateOne NormalFightView), Cmd.none )
+    ( GameInProgress (HazardSelection commonState hazardSelectionState), Cmd.none )
 
 
 
@@ -353,6 +353,31 @@ type EndFightOk
     | EndFightPlayerLost Int
 
 
+getHazardStrength : Bool -> Phase -> HazardCard -> Int
+getHazardStrength isPhaseMinusOne phase hazard =
+    if isPhaseMinusOne then
+        case phase of
+            PhaseGreen ->
+                HazardCard.getGreenValue hazard
+
+            PhaseYellow ->
+                HazardCard.getGreenValue hazard
+
+            PhaseRed ->
+                HazardCard.getYellowValue hazard
+
+    else
+        case phase of
+            PhaseGreen ->
+                HazardCard.getGreenValue hazard
+
+            PhaseYellow ->
+                HazardCard.getYellowValue hazard
+
+            PhaseRed ->
+                HazardCard.getRedValue hazard
+
+
 attemptEndFightHazard : Phase -> FightArea -> HazardCard -> Result EndFightErr EndFightOk
 attemptEndFightHazard phase fightArea hazard =
     if List.length (FightArea.getCards fightArea) == 0 then
@@ -369,27 +394,7 @@ attemptEndFightHazard phase fightArea hazard =
 
             hazardStrength : Int
             hazardStrength =
-                if FightArea.isPhaseMinusOne fightArea then
-                    case phase of
-                        PhaseGreen ->
-                            HazardCard.getGreenValue hazard
-
-                        PhaseYellow ->
-                            HazardCard.getGreenValue hazard
-
-                        PhaseRed ->
-                            HazardCard.getYellowValue hazard
-
-                else
-                    case phase of
-                        PhaseGreen ->
-                            HazardCard.getGreenValue hazard
-
-                        PhaseYellow ->
-                            HazardCard.getYellowValue hazard
-
-                        PhaseRed ->
-                            HazardCard.getRedValue hazard
+                getHazardStrength (FightArea.isPhaseMinusOne fightArea) phase hazard
 
             strengthDifference : Int
             strengthDifference =
@@ -1082,6 +1087,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Just ( drawnCard, newCommonState ) ->
                     Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
+        -- TODO: look at getting this to return Err if all ability cards would be disabled
         Copy ->
             let
                 noCopyableCard : Bool
@@ -1145,7 +1151,12 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Ok ( commonState, setCardInUse, SelectDestroyView index )
 
         PhaseMinusOne ->
-            if commonState.phase == PhaseGreen then
+            let
+                adjustedPhase : Phase
+                adjustedPhase =
+                    getAdjustedPhase (FightArea.isPhaseMinusOne fightArea) commonState.phase
+            in
+            if adjustedPhase == PhaseGreen then
                 Err "Phase cannot go below Green"
 
             else
@@ -1402,19 +1413,6 @@ renderHazardSelection commonState hazardOption =
 
 
 -- FightingHazard
-
-
-getHazardStrength : Phase -> HazardCard -> Int
-getHazardStrength phase hazard =
-    case phase of
-        PhaseGreen ->
-            HazardCard.getGreenValue hazard
-
-        PhaseYellow ->
-            HazardCard.getYellowValue hazard
-
-        PhaseRed ->
-            HazardCard.getRedValue hazard
 
 
 type alias FightDashArgs =
@@ -1863,8 +1861,30 @@ renderFightArea commonState fightArea fightView =
                 )
 
 
+getAdjustedPhase : Bool -> Phase -> Phase
+getAdjustedPhase isPhaseMinusOne phase =
+    if isPhaseMinusOne then
+        case phase of
+            PhaseGreen ->
+                PhaseGreen
+
+            PhaseYellow ->
+                PhaseGreen
+
+            PhaseRed ->
+                PhaseYellow
+
+    else
+        phase
+
+
 renderFightingHazard : CommonState -> FightArea -> HazardCard -> FightView -> Html Msg
 renderFightingHazard commonState fightArea hazard fightView =
+    let
+        displayPhase : Phase
+        displayPhase =
+            getAdjustedPhase (FightArea.isPhaseMinusOne fightArea) commonState.phase
+    in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , div [ class rightColClasses ]
@@ -1874,9 +1894,9 @@ renderFightingHazard commonState fightArea hazard fightView =
             , renderFightDash
                 { canDraw = PlayerDeck.canDraw commonState.playerDeck
                 , fightArea = fightArea
-                , renderEnemy = renderHazard commonState.phase hazard
+                , renderEnemy = renderHazard displayPhase hazard
                 , freeCards = HazardCard.getFreeCards hazard
-                , enemyStrength = HazardCard.getStrength hazard
+                , enemyStrength = getHazardStrength (FightArea.isPhaseMinusOne fightArea) commonState.phase hazard
                 , endFightResult = attemptEndFightHazard commonState.phase fightArea hazard
                 }
             , renderFightArea commonState fightArea fightView
