@@ -11,6 +11,7 @@ import Html exposing (Html, a, button, div, h1, h2, h3, img, li, span, text, ul)
 import Html.Attributes exposing (class, disabled, src)
 import Html.Events exposing (onClick)
 import LifePoints
+import List.Extra
 import Phase exposing (Phase(..))
 import PirateCard exposing (PirateCard)
 import PlayerCard exposing (PlayerCard)
@@ -1087,14 +1088,40 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Just ( drawnCard, newCommonState ) ->
                     Ok ( newCommonState, setCardInUse, SortView (SortArea.create drawnCard) )
 
-        -- TODO: look at getting this to return Err if all ability cards would be disabled
         Copy ->
             let
+                mapIfCopyableCard : Int -> PlayerCard -> List PlayerCard -> List PlayerCard
+                mapIfCopyableCard i card accum =
+                    case PlayerCard.getAbility card of
+                        Nothing ->
+                            accum
+
+                        Just Copy ->
+                            accum
+
+                        Just nonCopyAbility ->
+                            let
+                                abilityResolution : Result String ( CommonState, FightArea, FightView )
+                                abilityResolution =
+                                    attemptResolveAbility
+                                        { ability = nonCopyAbility
+                                        , index = i
+                                        , setCardInUse = setCardInUse
+                                        , setCardUsed = setCardUsed
+                                        , commonState = commonState
+                                        , fightArea = fightArea
+                                        }
+                            in
+                            if Result.Extra.isOk <| abilityResolution then
+                                card :: accum
+
+                            else
+                                accum
+
                 noCopyableCard : Bool
                 noCopyableCard =
                     FightArea.getAbilityCards fightArea
-                        |> List.filterMap PlayerCard.getAbility
-                        |> List.filter ((/=) Copy)
+                        |> List.Extra.indexedFoldl mapIfCopyableCard []
                         |> List.isEmpty
             in
             if noCopyableCard then
