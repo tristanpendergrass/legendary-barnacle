@@ -1827,6 +1827,21 @@ renderSortArea sortArea =
     div [ class "flex flex-wrap" ] (renderButtons :: renderCards)
 
 
+renderFightArea : CommonState -> FightArea -> FightView -> Html Msg
+renderFightArea commonState fightArea fightView =
+    case fightView of
+        SortView sortArea ->
+            renderSortArea sortArea
+
+        _ ->
+            div [ class "flex flex-wrap" ]
+                (fightArea
+                    |> FightArea.getPlayedCards
+                    |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
+                    |> List.reverse
+                )
+
+
 renderFightingHazard : CommonState -> FightArea -> HazardCard -> FightView -> Html Msg
 renderFightingHazard commonState fightArea hazard fightView =
     div [ class "flex flex-row flex-grow space-x-8" ]
@@ -1843,17 +1858,7 @@ renderFightingHazard commonState fightArea hazard fightView =
                 , enemyStrength = HazardCard.getStrength hazard
                 , endFightResult = attemptEndFightHazard commonState.phase fightArea hazard
                 }
-            , case fightView of
-                SortView sortArea ->
-                    renderSortArea sortArea
-
-                _ ->
-                    div [ class "flex flex-wrap" ]
-                        (fightArea
-                            |> FightArea.getPlayedCards
-                            |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
-                            |> List.reverse
-                        )
+            , renderFightArea commonState fightArea fightView
             ]
         ]
 
@@ -1897,17 +1902,7 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 , enemyStrength = PirateCard.getStrength pirate
                 , endFightResult = attemptEndFinalShowdown fightArea pirate
                 }
-            , case fightView of
-                SortView sortArea ->
-                    renderSortArea sortArea
-
-                _ ->
-                    div [ class "flex flex-wrap" ]
-                        (fightArea
-                            |> FightArea.getPlayedCards
-                            |> List.indexedMap (renderPlayedCard commonState fightArea fightView)
-                            |> List.reverse
-                        )
+            , renderFightArea commonState fightArea fightView
             ]
         ]
 
