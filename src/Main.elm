@@ -1583,16 +1583,16 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                                 div [] []
 
                     SelectDoubleView doubleIndex ->
-                        if isDoubled then
-                            -- can't double the same card twice
-                            div [] []
-
-                        else if index == doubleIndex then
+                        if index == doubleIndex then
                             button
                                 [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
                                 , onClick <| CancelAbility index
                                 ]
                                 [ text "Cancel" ]
+
+                        else if isDoubled then
+                            -- can't double the same card twice
+                            div [] []
 
                         else
                             button [ class transparentButton, onClick <| SelectDouble index ] [ text "Select Double" ]
