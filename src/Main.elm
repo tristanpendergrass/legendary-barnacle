@@ -136,15 +136,22 @@ init _ =
         ( robinsonCards, seedAfterRobinsonCards ) =
             Random.step (Random.List.shuffle RobinsonCard.getInitial) seedAfterAgingShuffle
 
-        -- playerDeck : PlayerDeck
-        -- playerDeck =
-        --     robinsonCards
-        --         |> List.map PlayerCard.fromRobinsonCard
-        -- |> PlayerDeck.create agingCards
         playerDeck : PlayerDeck
         playerDeck =
+            robinsonCards
+                |> List.map PlayerCard.fromRobinsonCard
+                |> PlayerDeck.create agingCards
+
+        testPlayerDeck : PlayerDeck
+        testPlayerDeck =
             HazardCard.getTestCards
                 |> List.map PlayerCard.fromHazardCard
+                |> PlayerDeck.create agingCards
+
+        testAgingCardsPlayerDeck : PlayerDeck
+        testAgingCardsPlayerDeck =
+            AgingCard.getTestCards
+                |> List.map PlayerCard.fromAgingCard
                 |> PlayerDeck.create agingCards
 
         ( hazardOne, hazardTwo, remainingHazards ) =
@@ -168,7 +175,9 @@ init _ =
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
-            , playerDeck = playerDeck
+
+            -- , playerDeck = playerDeck
+            , playerDeck = testAgingCardsPlayerDeck
             , hazardDeck = hazardDeck
             }
 
@@ -1289,6 +1298,9 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
 
                         Just _ ->
                             Ok ( newCommonState, FightArea.playCard drawnCard setCardInUse, DrawSecondCardView (index + 1) )
+
+        StopDrawing ->
+            Err "Cannot be used"
 
         {--|
             MinusOneLife

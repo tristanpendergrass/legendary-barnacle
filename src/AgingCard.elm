@@ -1,4 +1,4 @@
-module AgingCard exposing (AgingCard, getAbility, getInitial, getStrength, getTitle, hasAbility)
+module AgingCard exposing (AgingCard, getAbility, getInitial, getStrength, getTestCards, getTitle, hasAbility)
 
 import FightStats exposing (FightStats, SpecialAbility(..))
 import Maybe.Extra
@@ -83,6 +83,13 @@ difficultAgingCards =
 
 
 -- Utility methods
+
+
+getTestCards : List AgingCard
+getTestCards =
+    [ veryTired
+    , stupid
+    ]
 
 
 getInitial : Random.Generator (List AgingCard)
