@@ -433,6 +433,7 @@ attemptEndFightHazard phase fightArea hazard =
         Err MustDrawACard
 
     else if FightArea.hasUnusedAgingCards fightArea then
+        -- TODO: let them end fight if only "unused" aging card is StopDraw
         Err UnusedAgingCards
 
     else
@@ -1168,6 +1169,47 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 in
                 Ok ( newCommonState, newFightArea, NormalFightView )
 
+        MinusOneLife ->
+            case LifePoints.decrementCounter 1 commonState.lifePoints of
+                Nothing ->
+                    Err "Player would die"
+
+                Just newLifePoints ->
+                    let
+                        newCommonState : CommonState
+                        newCommonState =
+                            { commonState | lifePoints = newLifePoints }
+
+                        newFightArea : FightArea
+                        newFightArea =
+                            setCardUsed
+                    in
+                    Ok ( newCommonState, newFightArea, NormalFightView )
+
+        MinusTwoLife ->
+            let
+                maybeLifeCounter : Maybe LifePoints.Counter
+                maybeLifeCounter =
+                    commonState.lifePoints
+                        |> LifePoints.decrementCounter 1
+                        |> Maybe.andThen (LifePoints.decrementCounter 1)
+            in
+            case maybeLifeCounter of
+                Nothing ->
+                    Err "Player would die"
+
+                Just newLifePoints ->
+                    let
+                        newCommonState : CommonState
+                        newCommonState =
+                            { commonState | lifePoints = newLifePoints }
+
+                        newFightArea : FightArea
+                        newFightArea =
+                            setCardUsed
+                    in
+                    Ok ( newCommonState, newFightArea, NormalFightView )
+
         SortThree ->
             case drawCard commonState of
                 Nothing ->
@@ -1303,10 +1345,7 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
             Err "Cannot be used"
 
         {--|
-            MinusOneLife
-            MinusTwoLife
             HighestCardNull
-            StopDrawing
         --}
         _ ->
             Debug.todo "Implement missing ability"

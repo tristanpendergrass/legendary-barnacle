@@ -88,6 +88,8 @@ difficultAgingCards =
 getTestCards : List AgingCard
 getTestCards =
     [ veryTired
+    , hungry
+    , veryHungry
     , stupid
     ]
 
