@@ -38,10 +38,11 @@ type alias HazardStats =
 
 getTestCards : List HazardCard
 getTestCards =
-    [ HazardCard furtherExploringTheIsland { title = "experience", strength = 2, specialAbility = Just DrawOne }
-    , HazardCard withTheRaft { title = "mimicry", strength = 0, specialAbility = Just Copy }
+    [ HazardCard withTheRaft { title = "strategy", strength = 0, specialAbility = Just ExchangeTwo }
     , HazardCard exploringTheIsland { title = "repeat", strength = 1, specialAbility = Just Double }
 
+    -- , HazardCard furtherExploringTheIsland { title = "experience", strength = 2, specialAbility = Just DrawOne }
+    -- , HazardCard withTheRaft { title = "mimicry", strength = 0, specialAbility = Just Copy }
     -- , HazardCard furtherExploringTheIsland { title = "strategy", strength = 2, specialAbility = Just ExchangeOne }
     -- , HazardCard withTheRaft { title = "books", strength = 0, specialAbility = Just PhaseMinusOne }
     -- , HazardCard withTheRaft { title = "deception", strength = 0, specialAbility = Just BelowTheStack }
@@ -151,22 +152,6 @@ getInitial =
 getDummy : HazardCard
 getDummy =
     food
-
-
-
--- getInitial : Random.Generator ( ( HazardCard, HazardCard ), List HazardCard )
--- getInitial =
---     hazardCards
---         |> Random.List.shuffle
---         |> Random.map
---             (\shuffledList ->
---                 case shuffledList of
---                     first :: second :: rest ->
---                         ( ( first, second ), rest )
---                     _ ->
---                         -- should not be reachable
---                         ( ( food, food ), shuffledList )
---             )
 
 
 getFreeCards : HazardCard -> Int

@@ -128,7 +128,7 @@ init _ =
         --  TODO: Pull this from outside of program
         initialSeed : Random.Seed
         initialSeed =
-            Random.initialSeed 0
+            Random.initialSeed 71219929034759834
 
         ( agingCards, seedAfterAgingShuffle ) =
             Random.step AgingCard.getInitial initialSeed
@@ -146,7 +146,8 @@ init _ =
         testPlayerDeck =
             List.append
                 (HazardCard.getTestCards |> List.map PlayerCard.fromHazardCard)
-                (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
+                (robinsonCards |> List.map PlayerCard.fromRobinsonCard)
+                -- (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
                 |> PlayerDeck.create agingCards
 
         ( hazardOne, hazardTwo, remainingHazards ) =
@@ -154,6 +155,10 @@ init _ =
 
         ( ( leftHazard, rightHazard, hazardCards ), seedAfterHazardShuffle ) =
             Random.step (addTwoShuffleAndDraw hazardOne hazardTwo remainingHazards) seedAfterRobinsonCards
+
+        printHazards : List String
+        printHazards =
+            Debug.log "Hazards" (leftHazard :: rightHazard :: hazardCards |> List.map HazardCard.getTitle)
 
         hazardDeck : HazardDeck
         hazardDeck =
@@ -166,7 +171,7 @@ init _ =
         commonState =
             { seed = seedAfterPirateShuffle
             , lifePoints = LifePoints.createCounter 20
-            , phase = PhaseRed
+            , phase = PhaseGreen
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
@@ -1288,7 +1293,8 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
                 Ok ( commonState, setCardInUse, SelectBelowTheStackView index )
 
         ExchangeTwo ->
-            if List.length (FightArea.getCards fightArea) <= 2 then
+            -- TODO: decrease to only <= 1. You can still exchange if there's only one other card.
+            if List.length (FightArea.getCards fightArea) <= 1 then
                 Err "No card available to exchange"
 
             else
@@ -1710,121 +1716,143 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 
             else
                 PlayedCardNormal
+
+        renderSelectDoubleView : Bool -> Int -> Html Msg
+        renderSelectDoubleView isDoubled doubleIndex =
+            if index == doubleIndex then
+                button
+                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    , onClick <| CancelAbility index
+                    ]
+                    [ text "Cancel" ]
+
+            else if isDoubled then
+                -- can't double the same card twice
+                div [] []
+
+            else
+                button [ class transparentButton, onClick <| SelectDouble index ] [ text "Select Double" ]
+
+        renderSelectDestroyView : Int -> Html Msg
+        renderSelectDestroyView destroyIndex =
+            if index == destroyIndex then
+                button
+                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    , onClick <| CancelAbility index
+                    ]
+                    [ text "Cancel" ]
+
+            else
+                button [ class transparentButton, onClick <| SelectDestroy index ] [ text "Select Destroy" ]
+
+        renderDrawSecondCardView : Int -> Html Msg
+        renderDrawSecondCardView drawTwoIndex =
+            if index == drawTwoIndex then
+                div [ class "flex flex-col justify-center" ]
+                    [ button [ class transparentButton, onClick DrawSecondCard ] [ text "Draw Again" ]
+                    , button [ class transparentButton, onClick <| SetUsed index ] [ text "Stop" ]
+                    ]
+
+            else
+                div [] []
+
+        renderSelectExchangeTwoView : Int -> Bool -> Html Msg
+        renderSelectExchangeTwoView exchangeIndex andAnother =
+            if index == exchangeIndex then
+                if andAnother then
+                    button
+                        [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                        , onClick <| CancelAbility index
+                        ]
+                        [ text "Cancel" ]
+
+                else
+                    div [ class "flex flex-col justify-center" ]
+                        [ button [ class transparentButton, onClick <| SetUsed index ] [ text "Stop" ] ]
+
+            else
+                div [ class "flex flex-col justify-center" ]
+                    [ button [ class transparentButton, onClick <| SelectExchangeTwo index ] [ text "Select Exchange" ] ]
+
+        renderSelectExchangeOneView : Int -> Html Msg
+        renderSelectExchangeOneView exchangeIndex =
+            if index == exchangeIndex then
+                button
+                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    , onClick <| CancelAbility index
+                    ]
+                    [ text "Cancel" ]
+
+            else
+                div [ class "flex flex-col justify-center" ]
+                    [ button [ class transparentButton, onClick <| SelectExchangeOne index ] [ text "Select Exchange" ] ]
+
+        renderSelectBelowTheStackView : Int -> Html Msg
+        renderSelectBelowTheStackView belowTheStackIndex =
+            if index == belowTheStackIndex then
+                button
+                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    , onClick <| CancelAbility index
+                    ]
+                    [ text "Cancel" ]
+
+            else
+                button [ class transparentButton, onClick <| SelectBelowTheStack index ] [ text "Select Below the Stack" ]
     in
     case playedCard of
         FightArea.NormalCard card isDoubled ->
             div [ class "flex flex-col items-center" ]
                 [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card (getMod isDoubled) ]
+                , case fightView of
+                    SelectDoubleView doubleIndex ->
+                        renderSelectDoubleView isDoubled doubleIndex
+
+                    SelectDestroyView destroyIndex ->
+                        renderSelectDestroyView destroyIndex
+
+                    DrawSecondCardView drawTwoIndex ->
+                        renderDrawSecondCardView drawTwoIndex
+
+                    SelectExchangeTwoView exchangeIndex andAnother ->
+                        renderSelectExchangeTwoView exchangeIndex andAnother
+
+                    SelectExchangeOneView exchangeIndex ->
+                        renderSelectExchangeOneView exchangeIndex
+
+                    SelectBelowTheStackView belowTheStackIndex ->
+                        renderSelectBelowTheStackView belowTheStackIndex
+
+                    SelectCopyView _ ->
+                        div [] []
+
+                    NormalFightView ->
+                        div [] []
+
+                    SortView _ ->
+                        div [] []
                 ]
 
         FightArea.AbilityCard card usedState isDoubled ->
             div [ class "flex flex-col items-center" ]
                 [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card (getMod isDoubled) ]
                 , case fightView of
-                    NormalFightView ->
-                        case ( PlayerCard.getAbility card, usedState ) of
-                            ( Just ability, FightArea.NotUsed ) ->
-                                let
-                                    arg : ResolveAbilityArg
-                                    arg =
-                                        { ability = ability
-                                        , index = index
-                                        , setCardInUse = fightArea
-                                        , setCardUsed = fightArea
-                                        , commonState = commonState
-                                        , fightArea = fightArea
-                                        }
-
-                                    isAbilityDisabled : Bool
-                                    isAbilityDisabled =
-                                        Result.Extra.isErr <|
-                                            attemptResolveAbility arg
-                                in
-                                button
-                                    [ class <|
-                                        if isAbilityDisabled then
-                                            disabledTransparentButton
-
-                                        else
-                                            transparentButton
-                                    , onClick <| UseAbility index
-                                    , disabled isAbilityDisabled
-                                    ]
-                                    [ text <| FightStats.getAbilityLabel ability ]
-
-                            ( Just _, FightArea.InUse ) ->
-                                div [ class "px-2 py-1" ] [ text "In Use" ]
-
-                            ( Just ability, FightArea.Used ) ->
-                                button [ class disabledTransparentButton, disabled True ] [ text <| FightStats.getAbilityLabel ability ]
-
-                            ( Nothing, _ ) ->
-                                div [] []
-
                     SelectDoubleView doubleIndex ->
-                        if index == doubleIndex then
-                            button
-                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                , onClick <| CancelAbility index
-                                ]
-                                [ text "Cancel" ]
-
-                        else if isDoubled then
-                            -- can't double the same card twice
-                            div [] []
-
-                        else
-                            button [ class transparentButton, onClick <| SelectDouble index ] [ text "Select Double" ]
+                        renderSelectDoubleView isDoubled doubleIndex
 
                     SelectDestroyView destroyIndex ->
-                        if index == destroyIndex then
-                            button
-                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                , onClick <| CancelAbility index
-                                ]
-                                [ text "Cancel" ]
-
-                        else
-                            button [ class transparentButton, onClick <| SelectDestroy index ] [ text "Select Destroy" ]
+                        renderSelectDestroyView destroyIndex
 
                     DrawSecondCardView drawTwoIndex ->
-                        if index == drawTwoIndex then
-                            div [ class "flex flex-col justify-center" ]
-                                [ button [ class transparentButton, onClick DrawSecondCard ] [ text "Draw Again" ]
-                                , button [ class transparentButton, onClick <| SetUsed index ] [ text "Stop" ]
-                                ]
-
-                        else
-                            div [] []
+                        renderDrawSecondCardView drawTwoIndex
 
                     SelectExchangeTwoView exchangeIndex andAnother ->
-                        if index == exchangeIndex then
-                            if andAnother then
-                                button
-                                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                    , onClick <| CancelAbility index
-                                    ]
-                                    [ text "Cancel" ]
-
-                            else
-                                div [ class "flex flex-col justify-center" ]
-                                    [ button [ class transparentButton, onClick <| SetUsed index ] [ text "Stop" ] ]
-
-                        else
-                            div [ class "flex flex-col justify-center" ]
-                                [ button [ class transparentButton, onClick <| SelectExchangeTwo index ] [ text "Select Exchange" ] ]
+                        renderSelectExchangeTwoView exchangeIndex andAnother
 
                     SelectExchangeOneView exchangeIndex ->
-                        if index == exchangeIndex then
-                            button
-                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                , onClick <| CancelAbility index
-                                ]
-                                [ text "Cancel" ]
+                        renderSelectExchangeOneView exchangeIndex
 
-                        else
-                            div [ class "flex flex-col justify-center" ]
-                                [ button [ class transparentButton, onClick <| SelectExchangeOne index ] [ text "Select Exchange" ] ]
+                    SelectBelowTheStackView belowTheStackIndex ->
+                        renderSelectBelowTheStackView belowTheStackIndex
 
                     SelectCopyView copyIndex ->
                         if index == copyIndex then
@@ -1871,19 +1899,48 @@ renderPlayedCard commonState fightArea fightView index playedCard =
                                 Nothing ->
                                     div [] []
 
-                    SelectBelowTheStackView belowTheStackIndex ->
-                        if index == belowTheStackIndex then
-                            button
-                                [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
-                                , onClick <| CancelAbility index
-                                ]
-                                [ text "Cancel" ]
+                    NormalFightView ->
+                        case ( PlayerCard.getAbility card, usedState ) of
+                            ( Just ability, FightArea.NotUsed ) ->
+                                let
+                                    arg : ResolveAbilityArg
+                                    arg =
+                                        { ability = ability
+                                        , index = index
+                                        , setCardInUse = fightArea
+                                        , setCardUsed = fightArea
+                                        , commonState = commonState
+                                        , fightArea = fightArea
+                                        }
 
-                        else
-                            button [ class transparentButton, onClick <| SelectBelowTheStack index ] [ text "Select Below the Stack" ]
+                                    isAbilityDisabled : Bool
+                                    isAbilityDisabled =
+                                        Result.Extra.isErr <|
+                                            attemptResolveAbility arg
+                                in
+                                button
+                                    [ class <|
+                                        if isAbilityDisabled then
+                                            disabledTransparentButton
 
-                    _ ->
-                        Debug.todo "Implement missing fight view"
+                                        else
+                                            transparentButton
+                                    , onClick <| UseAbility index
+                                    , disabled isAbilityDisabled
+                                    ]
+                                    [ text <| FightStats.getAbilityLabel ability ]
+
+                            ( Just _, FightArea.InUse ) ->
+                                div [ class "px-2 py-1" ] [ text "In Use" ]
+
+                            ( Just ability, FightArea.Used ) ->
+                                button [ class disabledTransparentButton, disabled True ] [ text <| FightStats.getAbilityLabel ability ]
+
+                            ( Nothing, _ ) ->
+                                div [] []
+
+                    SortView _ ->
+                        div [] []
                 ]
 
 
