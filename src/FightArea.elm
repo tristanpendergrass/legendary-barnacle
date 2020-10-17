@@ -20,6 +20,7 @@ module FightArea exposing
     , getPlayedCards
     , getPlayerStrength
     , hasUnusedAgingCards
+    , isNull
     , playCard
     , reducePhase
     , setCardInUse
@@ -144,9 +145,66 @@ getPlayedCardStrength playedCard =
             strength * 2
 
 
+cardIsHighestCardIsNull : PlayedCard -> Bool
+cardIsHighestCardIsNull =
+    fromPlayedCard
+        >> PlayerCard.getAbility
+        >> Maybe.map ((==) HighestCardNull)
+        >> Maybe.withDefault False
+
+
+isNull : Int -> FightArea -> Bool
+isNull index (FightArea cards _ _) =
+    let
+        hasHighestCardNull : Bool
+        hasHighestCardNull =
+            List.any cardIsHighestCardIsNull cards
+    in
+    if hasHighestCardNull then
+        let
+            strengths : List Int
+            strengths =
+                List.map getPlayedCardStrength cards
+
+            ( _, indexOfMax ) =
+                List.Extra.indexedFoldl
+                    (\i strength ( max, indexOfMaxSoFar ) ->
+                        if strength > max then
+                            ( strength, i )
+
+                        else
+                            ( max, indexOfMaxSoFar )
+                    )
+                    ( -2, 0 )
+                    strengths
+        in
+        indexOfMax == index
+
+    else
+        False
+
+
 getPlayerStrength : FightArea -> Int
-getPlayerStrength =
-    getPlayedCards >> List.map getPlayedCardStrength >> List.foldl (+) 0
+getPlayerStrength (FightArea cards _ _) =
+    let
+        ( playerStrength, highestCardStrength, hadHighestCardIsNull ) =
+            List.foldl
+                (\playedCard ( total, highestCard, highestCardIsNull ) ->
+                    let
+                        strength : Int
+                        strength =
+                            getPlayedCardStrength playedCard
+                    in
+                    ( total + strength, Basics.max highestCard strength, highestCardIsNull || cardIsHighestCardIsNull playedCard )
+                )
+                ( 0, -2, False )
+                cards
+    in
+    if hadHighestCardIsNull then
+        playerStrength - highestCardStrength
+
+    else
+        playerStrength
 
 
 getCard : Int -> FightArea -> Maybe PlayerCard

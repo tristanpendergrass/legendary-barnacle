@@ -144,14 +144,9 @@ init _ =
 
         testPlayerDeck : PlayerDeck
         testPlayerDeck =
-            HazardCard.getTestCards
-                |> List.map PlayerCard.fromHazardCard
-                |> PlayerDeck.create agingCards
-
-        testAgingCardsPlayerDeck : PlayerDeck
-        testAgingCardsPlayerDeck =
-            AgingCard.getTestCards
-                |> List.map PlayerCard.fromAgingCard
+            List.append
+                (HazardCard.getTestCards |> List.map PlayerCard.fromHazardCard)
+                (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
                 |> PlayerDeck.create agingCards
 
         ( hazardOne, hazardTwo, remainingHazards ) =
@@ -177,7 +172,7 @@ init _ =
             , pirateStatus = BothPiratesAlive
 
             -- , playerDeck = playerDeck
-            , playerDeck = testAgingCardsPlayerDeck
+            , playerDeck = testPlayerDeck
             , hazardDeck = hazardDeck
             }
 
@@ -433,7 +428,7 @@ attemptEndFightHazard phase fightArea hazard =
         Err MustDrawACard
 
     else if FightArea.hasUnusedAgingCards fightArea then
-        -- TODO: let them end fight if only "unused" aging card is StopDraw
+        -- TODO: let them end fight if only "unused" aging card is StopDraw or HighestCardNull
         Err UnusedAgingCards
 
     else
@@ -1344,11 +1339,8 @@ attemptResolveAbility { ability, index, setCardInUse, setCardUsed, commonState, 
         StopDrawing ->
             Err "Cannot be used"
 
-        {--|
-            HighestCardNull
-        --}
-        _ ->
-            Debug.todo "Implement missing ability"
+        HighestCardNull ->
+            Err "Cannot be used"
 
 
 
@@ -1512,7 +1504,7 @@ renderHazard phase hazardCard =
 
         -- TODO: implement view reward after renderFightingCard is implemented
         -- TODO: Switch this text out for an icon button
-        , button [ class "absolute bottom-0 right-0" ] [ text "View Reward" ]
+        , div [ class "absolute bottom-0 right-0 cursor-default" ] [ text "View Reward" ]
         ]
 
 
@@ -1638,24 +1630,39 @@ renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength, end
         ]
 
 
-renderPlayerCard : PlayerCard -> Bool -> Html Msg
-renderPlayerCard playerCard isDoubled =
+type PlayedCardMod
+    = PlayedCardNormal
+    | PlayedCardDoubled
+    | PlayedCardNull
+
+
+renderPlayerCard : PlayerCard -> PlayedCardMod -> Html Msg
+renderPlayerCard playerCard mod =
     div [ class "flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
         [ div [ class "font-bold mb-2" ] [ text (PlayerCard.getTitle playerCard) ]
         , div [ class "flex items-center mb-1" ]
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
-            , if isDoubled then
-                div [ class "flex items-center" ]
-                    [ div [ class <| statWhite ++ "font-bold underline text-green-600" ]
-                        [ text <| String.fromInt <| PlayerCard.getStrength playerCard * 2
+            , case mod of
+                PlayedCardNormal ->
+                    div [ class statWhite ]
+                        [ text <| String.fromInt <| PlayerCard.getStrength playerCard
                         ]
-                    , div [ class "ml-2" ] [ text "*Doubled" ]
-                    ]
 
-              else
-                div [ class statWhite ]
-                    [ text <| String.fromInt <| PlayerCard.getStrength playerCard
-                    ]
+                PlayedCardDoubled ->
+                    div [ class "flex items-center" ]
+                        [ div [ class <| statWhite ++ "font-bold underline text-green-600" ]
+                            [ text <| String.fromInt <| PlayerCard.getStrength playerCard * 2
+                            ]
+                        , div [ class "ml-2" ] [ text "*Doubled" ]
+                        ]
+
+                PlayedCardNull ->
+                    div [ class "flex items-center" ]
+                        [ div [ class <| statWhite ++ " line-through" ]
+                            [ text <| String.fromInt <| PlayerCard.getStrength playerCard
+                            ]
+                        , div [ class "ml-2" ] [ text "*Null" ]
+                        ]
             ]
         , case PlayerCard.getAbility playerCard of
             Just ability ->
@@ -1691,20 +1698,28 @@ disabledTransparentButton =
 
 renderPlayedCard : CommonState -> FightArea -> FightView -> Int -> FightArea.PlayedCard -> Html Msg
 renderPlayedCard commonState fightArea fightView index playedCard =
+    let
+        -- if another card with ability HighestCardNull is in play and this is the highest card
+        getMod : Bool -> PlayedCardMod
+        getMod isDoubled =
+            if FightArea.isNull index fightArea then
+                PlayedCardNull
+
+            else if isDoubled then
+                PlayedCardDoubled
+
+            else
+                PlayedCardNormal
+    in
     case playedCard of
         FightArea.NormalCard card isDoubled ->
             div [ class "flex flex-col items-center" ]
-                [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card isDoubled ]
-                , if isDoubled then
-                    div [] [ text "Doubled" ]
-
-                  else
-                    div [] []
+                [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card (getMod isDoubled) ]
                 ]
 
         FightArea.AbilityCard card usedState isDoubled ->
             div [ class "flex flex-col items-center" ]
-                [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card isDoubled ]
+                [ div [ class "mr-4 mb-4" ] [ renderPlayerCard card (getMod isDoubled) ]
                 , case fightView of
                     NormalFightView ->
                         case ( PlayerCard.getAbility card, usedState ) of
@@ -1875,7 +1890,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
 renderSortAreaCard : SortArea.SortIndex -> PlayerCard -> Bool -> Html Msg
 renderSortAreaCard sortIndex playerCard isDiscarded =
     div [ class "flex flex-col items-center" ]
-        [ div [ class "mr-4 mb-4" ] [ renderPlayerCard playerCard False ]
+        [ div [ class "mr-4 mb-4" ] [ renderPlayerCard playerCard PlayedCardNormal ]
         , if isDiscarded then
             div [] [ text "Marked for discard" ]
 
@@ -1935,7 +1950,7 @@ renderSortArea sortArea =
         renderSortCard : PlayerCard -> SortArea.SortIndex -> Bool -> SortMoveButtonSet -> Html Msg
         renderSortCard playerCard sortIndex markedForDiscard sortMoveButtonSet =
             div [ class "flex flex-col items-center mr-4 space-y-2" ]
-                [ renderPlayerCard playerCard False
+                [ renderPlayerCard playerCard PlayedCardNormal
                 , div
                     [ class <|
                         if markedForDiscard then
@@ -2127,7 +2142,7 @@ renderPlayerWon commonState reward =
                 [ div [ class "text-3xl font-bold" ] [ text "Collect Reward" ]
                 ]
             , div [ class "flex flex-col items-center" ]
-                [ renderPlayerCard (PlayerCard.fromHazardCard reward) False ]
+                [ renderPlayerCard (PlayerCard.fromHazardCard reward) PlayedCardNormal ]
             , div [ class "flex flex-col items-center" ]
                 [ button [ class standardButton, onClick AcceptWin ] [ text "Accept" ] ]
             ]
@@ -2149,7 +2164,7 @@ renderPlayerLost commonState healthLost playerCardList =
         renderSelectableCard index isSelected playerCard =
             div [ class "flex flex-col justify-center" ]
                 [ div [ class "relative mr-4 mb-4" ]
-                    [ renderPlayerCard playerCard False
+                    [ renderPlayerCard playerCard PlayedCardNormal
                     , if isSelected then
                         div [ class "absolute top-0 left-0 w-full h-full opacity-50 bg-black" ] []
 
