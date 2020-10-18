@@ -175,9 +175,9 @@ init _ =
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
+            , playerDeck = playerDeck
 
-            -- , playerDeck = playerDeck
-            , playerDeck = testPlayerDeck
+            -- , playerDeck = testPlayerDeck
             , hazardDeck = hazardDeck
             }
 
@@ -1642,6 +1642,11 @@ type PlayedCardMod
     | PlayedCardNull
 
 
+
+-- TODO: show that aging cards will cost 2 life points to sacrifice
+-- TODO: alter colors/styles of aging cards
+
+
 renderPlayerCard : PlayerCard -> PlayedCardMod -> Html Msg
 renderPlayerCard playerCard mod =
     div [ class "flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
@@ -1700,6 +1705,10 @@ transparentButton =
 disabledTransparentButton : String
 disabledTransparentButton =
     "inline-block border border-gray-500 rounded px-2 py-1 text-gray-500"
+
+
+
+-- TODO: show that aging card must be used before fight can end
 
 
 renderPlayedCard : CommonState -> FightArea -> FightView -> Int -> FightArea.PlayedCard -> Html Msg
@@ -1965,6 +1974,10 @@ type SortMoveButtonSet
     | SortMoveButtonsLeft SortArea.ChangeOrderType
     | SortMoveButtonsRight SortArea.ChangeOrderType
     | SortMoveButtonsBoth
+
+
+
+-- TODO: disable reveal button when three cards already revealed
 
 
 renderSortArea : SortArea PlayerCard -> Html Msg
@@ -2258,6 +2271,8 @@ renderPlayerLost commonState healthLost playerCardList =
                 [ div [] [ text <| String.fromInt numSelected ++ "/" ++ String.fromInt healthLost ++ " cards sacrificed" ] ]
             , div [ class "flex flex-col items-center" ]
                 [ button [ class standardButton, onClick AcceptLoss ] [ text "Accept" ] ]
+
+            -- TODO: reverse display order just like with fighting hazard
             , div [ class "flex flex-wrap" ]
                 (SelectionList.map renderSelectableCard playerCardList)
             ]

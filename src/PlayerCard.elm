@@ -7,13 +7,15 @@ module PlayerCard exposing
     , getStrength
     , getTitle
     , hasAbility
-    , isAgingCard
+    , isUsableAgingCard
     )
 
+import Ability exposing (Ability(..))
 import AgingCard exposing (AgingCard)
-import FightStats exposing (SpecialAbility)
+import FightStats exposing (SpecialAbility(..))
 import HazardCard exposing (HazardCard)
 import RobinsonCard exposing (RobinsonCard)
+
 
 hasAbility : PlayerCard -> Bool
 hasAbility card =
@@ -75,11 +77,22 @@ getAbility playerCard =
             RobinsonCard.getAbility card
 
 
-isAgingCard : PlayerCard -> Bool
-isAgingCard playerCard =
+isUsableAgingCard : PlayerCard -> Bool
+isUsableAgingCard playerCard =
     case playerCard of
-        AgingType _ ->
-            True
+        AgingType agingCard ->
+            case AgingCard.getAbility agingCard of
+                Just StopDrawing ->
+                    False
+
+                Just HighestCardNull ->
+                    False
+
+                Just _ ->
+                    True
+
+                Nothing ->
+                    False
 
         _ ->
             False

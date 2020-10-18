@@ -462,7 +462,7 @@ hasUnusedAgingCards (FightArea cards _ _) =
         isUnusedAgingCard playedCard =
             case playedCard of
                 AbilityCard playerCard NotUsed _ ->
-                    PlayerCard.isAgingCard playerCard
+                    PlayerCard.isUsableAgingCard playerCard
 
                 _ ->
                     False
