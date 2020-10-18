@@ -158,7 +158,7 @@ init _ =
 
         printHazards : List String
         printHazards =
-            Debug.log "Hazards" (leftHazard :: rightHazard :: hazardCards |> List.map HazardCard.getTitle)
+            leftHazard :: rightHazard :: hazardCards |> List.map HazardCard.getTitle
 
         hazardDeck : HazardDeck
         hazardDeck =
