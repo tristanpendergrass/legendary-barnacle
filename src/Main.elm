@@ -1508,9 +1508,18 @@ renderHazard phase hazardCard =
                 ]
             ]
 
-        -- TODO: implement view reward after renderFightingCard is implemented
         -- TODO: Switch this text out for an icon button
-        , div [ class "absolute bottom-0 right-0 cursor-default" ] [ text "View Reward" ]
+        , div [ class "absolute bottom-0 right-0 mr-1" ]
+            [ div [ class "group relative cursor-default" ]
+                [ div [ class "inline-block flex flex-col items-center mb-1 border rounded border-blue-800 p-1 pt-0 text-blue-800 bg-blue-300" ]
+                    [ div [ class "text-xs font-thin underline" ] [ text "Reward" ]
+                    , div [ class "text-sm leading-none font-bold" ] [ text <| PlayerCard.getTitle <| PlayerCard.fromHazardCard hazardCard ]
+                    ]
+                , div [ class "z-10 hidden group-hover:inline-block absolute" ]
+                    [ renderPlayerCard (PlayerCard.fromHazardCard hazardCard) PlayedCardNormal
+                    ]
+                ]
+            ]
         ]
 
 
@@ -2293,6 +2302,10 @@ rightColClasses =
     "flex flex-col w-4/5 bg-gray-900 rounded shadow p-4 space-y-12"
 
 
+
+-- TODO: allow pirates to be previewed
+
+
 view : Model -> Html Msg
 view model =
     div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
@@ -2327,3 +2340,7 @@ view model =
                     renderFinalShowdown commonState fightArea pirate fightView
             ]
         ]
+
+
+
+-- TODO: make work on Github pages

@@ -1,6 +1,8 @@
 module.exports = {
   purge: false,
   theme: {},
-  variants: {},
+  variants: {
+      display: ['responsive', 'hover', 'focus', 'group-hover'],
+  },
   plugins: [],
 };
