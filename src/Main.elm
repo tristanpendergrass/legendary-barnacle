@@ -1399,17 +1399,22 @@ standardButton =
 
 primaryButton : String
 primaryButton =
-    "mr-4 inline-block bg-blue-600 hover:bg-blue-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
+    "mr-4 inline-block bg-blue-600 hover:bg-blue-500 font-bold text-gray-100 py-2 px-4 rounded"
 
 
 warnButton : String
 warnButton =
-    "mr-4 inline-block bg-red-600 hover:bg-red-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
+    "mr-4 inline-block bg-red-600 hover:bg-red-500 font-bold text-gray-100 py-2 px-4 rounded"
+
+
+goButton : String
+goButton =
+    "mr-4 inline-block bg-green-600 hover:bg-green-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
 
 
 disabledStandardButton : String
 disabledStandardButton =
-    "mr-4 inline-block bg-gray-100 opacity-50 font-bold text-gray-800 rounded py-2 px-4 rounded"
+    "mr-4 inline-block bg-gray-100 opacity-50 font-bold text-gray-800 py-2 px-4 rounded"
 
 
 transparentButton : String
@@ -1420,6 +1425,16 @@ transparentButton =
 disabledTransparentButton : String
 disabledTransparentButton =
     "inline-block border border-gray-500 rounded px-2 py-1 text-gray-500"
+
+
+underlineButton : String
+underlineButton =
+    "mr-4 inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 hover:border-opacity-100 text-gray-100 py-1"
+
+
+disabledUnderlineButton : String
+disabledUnderlineButton =
+    "mr-4 inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 text-gray-100 py-1 opacity-50"
 
 
 renderPhase : Phase -> Html Msg
@@ -1625,41 +1640,58 @@ renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength, end
         willTakeDrawDamage : Bool
         willTakeDrawDamage =
             FightArea.getFreeCardsDrawn fightArea >= freeCards
+
+        freeDrawsLeft : Int
+        freeDrawsLeft =
+            max 0 (freeCards - FightArea.getFreeCardsDrawn fightArea)
     in
     div [ class "flex items-center justify-between" ]
         [ div [ class "flex flex-col items-start space-y-4 px-8" ]
             [ div [ class "flex" ]
-                [ div [ class "flex items-end" ]
-                    [ if not canDraw then
-                        button [ class disabledStandardButton, disabled True ] [ text "Draw" ]
+                [ div [ class "flex items-center h-12" ]
+                    [ div [ class "flex justify-center w-32" ]
+                        [ if not canDraw then
+                            button [ class disabledStandardButton, disabled True ] [ text "Draw" ]
 
-                      else if willTakeDrawDamage then
-                        button [ class warnButton, onClick DrawNormally ] [ text "Draw" ]
+                          else if willTakeDrawDamage then
+                            button [ class warnButton, onClick DrawNormally ] [ text "Draw" ]
 
-                      else
-                        button [ class primaryButton, onClick DrawNormally ] [ text "Draw" ]
-                    , span [ class "text-3xl font-bold mr-1 leading-none" ]
-                        [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
-                    , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt freeCards ]
-                    , span [ class "leading-none" ] [ text "free cards drawn" ]
+                          else
+                            button [ class primaryButton, onClick DrawNormally ] [ text "Draw" ]
+                        ]
+                    , div [ class "flex items-end" ]
+                        [ span [ class "text-4xl font-bold mr-2 leading-none" ]
+                            [ text <| String.fromInt freeDrawsLeft ]
+                        , span [ class "text-sm leading-none" ]
+                            [ text <|
+                                if freeDrawsLeft == 1 then
+                                    "free draw left"
+
+                                else
+                                    "free draws left"
+                            ]
+                        ]
                     ]
                 ]
             , div [ class "flex" ]
-                [ div [ class "flex items-end" ]
-                    [ case endFightResult of
-                        -- TODO: enhance this button with affordances for why fight can't be ended based on error type
-                        Err _ ->
-                            button [ class disabledStandardButton, disabled True ] [ text "End Fight" ]
+                [ div [ class "flex items-center h-12" ]
+                    [ div [ class "flex justify-center w-32" ]
+                        [ case endFightResult of
+                            -- TODO: enhance this button with affordances for why fight can't be ended based on error type
+                            Err _ ->
+                                button [ class disabledUnderlineButton, disabled True ] [ text "Retreat" ]
 
-                        -- TODO: enhance this button with affordances to let player know if they'll win or lose
-                        Ok _ ->
-                            button [ class standardButton, onClick EndFight ] [ text "End Fight" ]
-                    , span [ class "text-3xl font-bold mr-1 leading-none" ]
-                        [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
-                    , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
-                    , span [ class "text-3xl font-bold mr-2 leading-none" ] [ text <| String.fromInt enemyStrength ]
-                    , span [ class "leading-none" ] [ text "total strength" ]
+                            Ok EndFightPlayerWon ->
+                                button [ class goButton, onClick EndFight ] [ text "End Fight" ]
+
+                            Ok (EndFightPlayerLost _) ->
+                                button [ class underlineButton, onClick EndFight ] [ text "Retreat" ]
+                        ]
+                    , div [ class "flex items-end" ]
+                        [ span [ class "text-4xl font-bold mr-2 leading-none" ]
+                            [ text <| String.fromInt (FightArea.getPlayerStrength fightArea) ]
+                        , span [ class "text-sm leading-none" ] [ text "total strength" ]
+                        ]
                     ]
                 ]
             ]
