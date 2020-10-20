@@ -1362,6 +1362,66 @@ subscriptions _ =
 -- Common
 
 
+statCircle : String
+statCircle =
+    "rounded-full h-8 w-8 flex items-center justify-center font-semibold text-sm"
+
+
+statTransparent : String
+statTransparent =
+    statCircle ++ " border border-gray-100"
+
+
+statWhite : String
+statWhite =
+    statCircle ++ " bg-white text-gray-900 border border-gray-900"
+
+
+statGreen : String
+statGreen =
+    statCircle ++ " bg-green-600 text-gray-100 border border-gray-10"
+
+
+statYellow : String
+statYellow =
+    statCircle ++ " bg-yellow-400 text-gray-900 border border-gray-900"
+
+
+statRed : String
+statRed =
+    statCircle ++ " bg-red-600 text-gray-100 border border-gray-100"
+
+
+standardButton : String
+standardButton =
+    "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded"
+
+
+primaryButton : String
+primaryButton =
+    "mr-4 inline-block bg-blue-600 hover:bg-blue-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
+
+
+warnButton : String
+warnButton =
+    "mr-4 inline-block bg-red-600 hover:bg-red-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
+
+
+disabledStandardButton : String
+disabledStandardButton =
+    "mr-4 inline-block bg-gray-100 opacity-50 font-bold text-gray-800 rounded py-2 px-4 rounded"
+
+
+transparentButton : String
+transparentButton =
+    "inline-block border border-gray-100 hover:bg-gray-100 hover:bg-opacity-25 rounded px-2 py-1 text-gray-100"
+
+
+disabledTransparentButton : String
+disabledTransparentButton =
+    "inline-block border border-gray-500 rounded px-2 py-1 text-gray-500"
+
+
 renderPhase : Phase -> Html Msg
 renderPhase phase =
     case phase of
@@ -1447,36 +1507,6 @@ renderCommonState commonState =
             , renderPhase commonState.phase
             ]
         ]
-
-
-statCircle : String
-statCircle =
-    "rounded-full h-8 w-8 flex items-center justify-center font-semibold text-sm"
-
-
-statTransparent : String
-statTransparent =
-    statCircle ++ " border border-gray-100"
-
-
-statWhite : String
-statWhite =
-    statCircle ++ " bg-white text-gray-900 border border-gray-900"
-
-
-statGreen : String
-statGreen =
-    statCircle ++ " bg-green-600 text-gray-100 border border-gray-10"
-
-
-statYellow : String
-statYellow =
-    statCircle ++ " bg-yellow-400 text-gray-900 border border-gray-900"
-
-
-statRed : String
-statRed =
-    statCircle ++ " bg-red-600 text-gray-100 border border-gray-100"
 
 
 renderHazard : Phase -> HazardCard -> Html Msg
@@ -1591,15 +1621,23 @@ type alias FightDashArgs =
 
 renderFightDash : FightDashArgs -> Html Msg
 renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength, endFightResult } =
+    let
+        willTakeDrawDamage : Bool
+        willTakeDrawDamage =
+            FightArea.getFreeCardsDrawn fightArea >= freeCards
+    in
     div [ class "flex items-center justify-between" ]
         [ div [ class "flex flex-col items-start space-y-4 px-8" ]
             [ div [ class "flex" ]
                 [ div [ class "flex items-end" ]
-                    [ if canDraw then
-                        button [ class standardButton, onClick DrawNormally ] [ text "Draw" ]
+                    [ if not canDraw then
+                        button [ class disabledStandardButton, disabled True ] [ text "Draw" ]
+
+                      else if willTakeDrawDamage then
+                        button [ class warnButton, onClick DrawNormally ] [ text "Draw" ]
 
                       else
-                        button [ class disabledStandardButton, disabled True ] [ text "Draw" ]
+                        button [ class primaryButton, onClick DrawNormally ] [ text "Draw" ]
                     , span [ class "text-3xl font-bold mr-1 leading-none" ]
                         [ text <| String.fromInt (FightArea.getFreeCardsDrawn fightArea) ]
                     , span [ class "text-3xl mr-1 leading-none" ] [ text "/" ]
@@ -1694,26 +1732,6 @@ renderPlayerCard playerCard mod =
             Nothing ->
                 div [] []
         ]
-
-
-standardButton : String
-standardButton =
-    "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded"
-
-
-disabledStandardButton : String
-disabledStandardButton =
-    "mr-4 inline-block bg-gray-100 opacity-50 font-bold text-gray-800 rounded py-2 px-4 rounded"
-
-
-transparentButton : String
-transparentButton =
-    "inline-block border border-gray-100 hover:bg-gray-100 hover:bg-opacity-25 rounded px-2 py-1 text-gray-100"
-
-
-disabledTransparentButton : String
-disabledTransparentButton =
-    "inline-block border border-gray-500 rounded px-2 py-1 text-gray-500"
 
 
 
