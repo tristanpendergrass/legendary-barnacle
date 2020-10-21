@@ -128,7 +128,7 @@ init _ =
         --  TODO: Pull this from outside of program
         initialSeed : Random.Seed
         initialSeed =
-            Random.initialSeed 71219929034759834
+            Random.initialSeed -3669217604955121468
 
         ( agingCards, seedAfterAgingShuffle ) =
             Random.step AgingCard.getInitial initialSeed
@@ -1529,6 +1529,12 @@ renderHazard phase hazardCard =
     div [ class "flex flex-col bg-orange-300 h-32 w-64 p-2 border-8 border-orange-600 rounded border-white text-orange-800 relative" ]
         [ div [ class "font-bold mb-2" ] [ text (HazardCard.getTitle hazardCard) ]
         , div [ class "flex items-center mb-1" ]
+            [ div [ class "text-sm mr-2" ] [ text "Free cards: " ]
+            , div [ class statWhite ]
+                [ text <| String.fromInt <| HazardCard.getFreeCards hazardCard
+                ]
+            ]
+        , div [ class "flex items-center" ]
             [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
             , case phase of
                 PhaseGreen ->
@@ -1545,12 +1551,6 @@ renderHazard phase hazardCard =
                     div [ class statRed ]
                         [ text <| String.fromInt <| HazardCard.getRedValue hazardCard
                         ]
-            ]
-        , div [ class "flex items-center" ]
-            [ div [ class "text-sm mr-2" ] [ text "Free cards: " ]
-            , div [ class statWhite ]
-                [ text <| String.fromInt <| HazardCard.getFreeCards hazardCard
-                ]
             ]
 
         -- TODO: Switch this text out for an icon button
