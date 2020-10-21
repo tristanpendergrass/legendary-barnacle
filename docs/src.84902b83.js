@@ -3,4 +3,4 @@ parcelRequire=function(e,r,t,n){var i,o="function"==typeof parcelRequire&&parcel
 },{}],"Focm":[function(require,module,exports) {
 "use strict";var e=require("./Main.elm"),i=e.Elm.Main.init({node:document.querySelector("main")});
 },{"./Main.elm":"asWa"}]},{},["Focm"], null)
-//# sourceMappingURL=https://www.tristanpendergrass.com/laughing-system/src.84902b83.js.map
+//# sourceMappingURL=https://www.tristanpendergrass.com/legendary-barnacle/src.84902b83.js.map
