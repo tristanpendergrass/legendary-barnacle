@@ -144,10 +144,10 @@ init _ =
 
         testPlayerDeck : PlayerDeck
         testPlayerDeck =
-            List.append
-                (HazardCard.getTestCards |> List.map PlayerCard.fromHazardCard)
-                (robinsonCards |> List.map PlayerCard.fromRobinsonCard)
-                -- (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
+            -- List.append
+            -- (HazardCard.getTestCards |> List.map PlayerCard.fromHazardCard)
+            -- (robinsonCards |> List.map PlayerCard.fromRobinsonCard)
+            (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
                 |> PlayerDeck.create agingCards
 
         ( hazardOne, hazardTwo, remainingHazards ) =
@@ -1723,7 +1723,6 @@ type PlayedCardMod
 
 
 -- TODO: show that aging cards will cost 2 life points to sacrifice
--- TODO: alter colors/styles of aging cards
 
 
 renderPlayerCard : PlayerCard -> PlayedCardMod -> Html Msg
@@ -1763,6 +1762,11 @@ renderPlayerCard playerCard mod =
 
             Nothing ->
                 div [] []
+        , if PlayerCard.isAgingCard playerCard then
+            div [ class "absolute top-0 right-0 text-xs p-2 bg-purple-600 text-gray-100 rounded mt-1 mr-1 leading-tight" ] [ text "Aging card" ]
+
+          else
+            div [] []
         ]
 
 

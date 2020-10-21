@@ -7,6 +7,7 @@ module PlayerCard exposing
     , getStrength
     , getTitle
     , hasAbility
+    , isAgingCard
     , isUsableAgingCard
     )
 
@@ -109,3 +110,13 @@ getTitle playerCard =
 
         RobinsonType card ->
             RobinsonCard.getTitle card
+
+
+isAgingCard : PlayerCard -> Bool
+isAgingCard playerCard =
+    case playerCard of
+        AgingType _ ->
+            True
+
+        _ ->
+            False
