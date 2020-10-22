@@ -24,7 +24,7 @@ import SelectionList exposing (SelectionList)
 import SortArea exposing (SortArea)
 
 
-main : Program () Model Msg
+main : Program Int Model Msg
 main =
     Browser.element { init = init, update = update, view = view, subscriptions = subscriptions }
 
@@ -122,13 +122,12 @@ addTwoShuffleAndDraw first second rest =
             )
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : Int -> ( Model, Cmd Msg )
+init randomNumber =
     let
-        --  TODO: Pull this from outside of program
         initialSeed : Random.Seed
         initialSeed =
-            Random.initialSeed -3669217604955121468
+            Random.initialSeed <| Debug.log "randomNumber" randomNumber
 
         ( agingCards, seedAfterAgingShuffle ) =
             Random.step AgingCard.getInitial initialSeed
