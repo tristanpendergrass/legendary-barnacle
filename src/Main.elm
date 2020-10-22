@@ -174,9 +174,9 @@ init randomNumber =
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
-            , playerDeck = playerDeck
 
-            -- , playerDeck = testPlayerDeck
+            -- , playerDeck = playerDeck
+            , playerDeck = testPlayerDeck
             , hazardDeck = hazardDeck
             }
 
@@ -432,7 +432,6 @@ attemptEndFightHazard phase fightArea hazard =
         Err MustDrawACard
 
     else if FightArea.hasUnusedAgingCards fightArea then
-        -- TODO: let them end fight if only "unused" aging card is StopDraw or HighestCardNull
         Err UnusedAgingCards
 
     else
@@ -1436,6 +1435,16 @@ disabledUnderlineButton =
     "mr-4 inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 text-gray-100 py-1 opacity-50"
 
 
+tooltip : String
+tooltip =
+    "relative group"
+
+
+tooltipText : String
+tooltipText =
+    "opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute whitespace-no-wrap z-10 bg-gray-300 text-gray-900 text-sm py-1 px-2 rounded transition duration-300"
+
+
 renderPhase : Phase -> Html Msg
 renderPhase phase =
     case phase of
@@ -1676,9 +1685,27 @@ renderFightDash { canDraw, fightArea, renderEnemy, freeCards, enemyStrength, end
                 [ div [ class "flex items-center h-12" ]
                     [ div [ class "flex justify-center w-32" ]
                         [ case endFightResult of
-                            -- TODO: enhance this button with affordances for why fight can't be ended based on error type
-                            Err _ ->
-                                button [ class disabledUnderlineButton, disabled True ] [ text "Retreat" ]
+                            Err err ->
+                                let
+                                    errText : String
+                                    errText =
+                                        case err of
+                                            MustDrawACard ->
+                                                "Must draw a card"
+
+                                            UnusedAgingCards ->
+                                                "All aging cards must be used"
+
+                                            CantLoseFight ->
+                                                "Can't retreat from this fight"
+
+                                            CardInUse ->
+                                                "Ability in use"
+                                in
+                                div [ class tooltip ]
+                                    [ button [ class disabledUnderlineButton, disabled True ] [ text "Retreat" ]
+                                    , div [ class tooltipText ] [ text errText ]
+                                    ]
 
                             Ok EndFightPlayerWon ->
                                 button [ class goButton, onClick EndFight ] [ text "End Fight" ]
@@ -2303,14 +2330,6 @@ renderPlayerLost commonState healthLost playerCardList =
                       else
                         div [] []
                     ]
-                , div []
-                    [ text <|
-                        if isSelected then
-                            "selected"
-
-                        else
-                            "not selected"
-                    ]
                 , button [ class standardButton, onClick (ToggleLossDestroy index) ]
                     [ text <|
                         if isSelected then
@@ -2364,7 +2383,10 @@ view model =
     div [ class "w-screen h-screen text-white flex flex-col justify-start items-center" ]
         [ div [ class "w-3/4 flex-grow flex flex-col py-8" ]
             [ div [ class "flex items-end border border-t-0 border-r-0 border-l-0 border-white mb-8" ]
-                [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
+                [ div [ class tooltip ]
+                    [ h1 [ class "text-4xl font-semibold" ] [ text "Friday" ]
+                    , div [ class tooltipText ] [ text "Programmed by Tristan" ]
+                    ]
                 , h3 [ class "pl-6" ]
                     [ span [ class "line-through" ] [ text "Partially" ]
                     , span [] [ text " Fully functional game" ]
