@@ -1084,6 +1084,7 @@ updateGameInProgress msg gameState =
                     ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (Two first second)), Cmd.none )
 
         ( ToggleLossDestroy index, ResolvingFight commonState (PlayerLost lifeLost selectionList) ) ->
+            -- TODO: make the attemptToggle take into account the aging cards costing 2 life
             case SelectionList.attemptToggle index selectionList of
                 Nothing ->
                     noOp
@@ -1392,27 +1393,27 @@ statRed =
 
 standardButton : String
 standardButton =
-    "mr-4 inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded"
+    "inline-block bg-gray-100 hover:bg-gray-300 font-bold text-gray-800 rounded py-2 px-4 rounded"
 
 
 primaryButton : String
 primaryButton =
-    "mr-4 inline-block bg-blue-600 hover:bg-blue-500 font-bold text-gray-100 py-2 px-4 rounded"
+    "inline-block bg-blue-600 hover:bg-blue-500 font-bold text-gray-100 py-2 px-4 rounded"
 
 
 warnButton : String
 warnButton =
-    "mr-4 inline-block bg-red-600 hover:bg-red-500 font-bold text-gray-100 py-2 px-4 rounded"
+    "inline-block bg-red-600 hover:bg-red-500 font-bold text-gray-100 py-2 px-4 rounded"
 
 
 goButton : String
 goButton =
-    "mr-4 inline-block bg-green-600 hover:bg-green-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
+    "inline-block bg-green-600 hover:bg-green-500 font-bold text-gray-100 rounded py-2 px-4 rounded"
 
 
 disabledStandardButton : String
 disabledStandardButton =
-    "mr-4 inline-block bg-gray-100 opacity-50 font-bold text-gray-800 py-2 px-4 rounded"
+    "inline-block bg-gray-100 opacity-50 font-bold text-gray-800 py-2 px-4 rounded"
 
 
 transparentButton : String
@@ -1427,12 +1428,21 @@ disabledTransparentButton =
 
 underlineButton : String
 underlineButton =
-    "mr-4 inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 hover:border-opacity-100 text-gray-100 py-1"
+    "inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 hover:border-opacity-100 text-gray-100 py-1 focus:outline-none"
 
 
 disabledUnderlineButton : String
 disabledUnderlineButton =
-    "mr-4 inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 text-gray-100 py-1 opacity-50"
+    "inline-block text-lg leading-none border border-t-0 border-r-0 border-l-0 border-gray-100 border-opacity-50 text-gray-100 py-1 opacity-50"
+
+
+
+-- TODO: revisit this and other places with focus:outline-none to give them some outline styles that look good
+
+
+cancelButton : String
+cancelButton =
+    "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500 focus:outline-none"
 
 
 tooltip : String
@@ -1819,7 +1829,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
         renderSelectDoubleView isDoubled doubleIndex =
             if index == doubleIndex then
                 button
-                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    [ class cancelButton
                     , onClick <| CancelAbility index
                     ]
                     [ text "Cancel" ]
@@ -1835,7 +1845,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
         renderSelectDestroyView destroyIndex =
             if index == destroyIndex then
                 button
-                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    [ class cancelButton
                     , onClick <| CancelAbility index
                     ]
                     [ text "Cancel" ]
@@ -1859,7 +1869,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
             if index == exchangeIndex then
                 if andAnother then
                     button
-                        [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                        [ class cancelButton
                         , onClick <| CancelAbility index
                         ]
                         [ text "Cancel" ]
@@ -1876,7 +1886,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
         renderSelectExchangeOneView exchangeIndex =
             if index == exchangeIndex then
                 button
-                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    [ class cancelButton
                     , onClick <| CancelAbility index
                     ]
                     [ text "Cancel" ]
@@ -1889,7 +1899,7 @@ renderPlayedCard commonState fightArea fightView index playedCard =
         renderSelectBelowTheStackView belowTheStackIndex =
             if index == belowTheStackIndex then
                 button
-                    [ class "border border-red-500 hover:bg-red-500 hover:bg-opacity-25 hover:text-gray-100 rounded px-2 py-1 text-red-500"
+                    [ class cancelButton
                     , onClick <| CancelAbility index
                     ]
                     [ text "Cancel" ]
@@ -2312,6 +2322,11 @@ renderPlayerWon commonState reward =
 -- PlayerLost
 
 
+renderBloodDrop : Html Msg
+renderBloodDrop =
+    img [ class "inline-block w-8 h-8", src "blood-drop.png" ] []
+
+
 renderPlayerLost : CommonState -> HealthLost -> SelectionList PlayerCard -> Html Msg
 renderPlayerLost commonState healthLost playerCardList =
     let
@@ -2321,18 +2336,8 @@ renderPlayerLost commonState healthLost playerCardList =
 
         renderSelectableCard : Int -> Bool -> PlayerCard -> Html Msg
         renderSelectableCard index isSelected playerCard =
-            div [ class "flex flex-col justify-center" ]
-                [ div [ class "flex justify-center" ]
-                    (if not isSelected then
-                        [ div [ class "opacity-0" ] [ span [] [ text "x" ] ] ]
-
-                     else if PlayerCard.isAgingCard playerCard then
-                        [ span [] [ text "x" ], span [] [ text "x" ] ]
-
-                     else
-                        [ span [] [ text "x" ] ]
-                    )
-                , div [ class "relative mr-4 mb-4" ]
+            div [ class "flex flex-col relative justify-center mr-4 mb-4" ]
+                [ div [ class "relative mb-2" ]
                     [ renderPlayerCard playerCard PlayedCardNormal
                     , if isSelected then
                         div [ class "absolute top-0 left-0 w-full h-full opacity-50 bg-black" ] []
@@ -2340,17 +2345,28 @@ renderPlayerLost commonState healthLost playerCardList =
                       else
                         div [] []
                     ]
-                , button [ class standardButton, onClick (ToggleLossDestroy index) ]
-                    [ text <|
-                        if isSelected then
-                            "Deselect"
+                , div [ class "flex justify-center items-center h-12" ]
+                    [ if isSelected then
+                        button [ class cancelButton, onClick (ToggleLossDestroy index) ]
+                            [ text "Cancel" ]
 
-                        else if PlayerCard.isAgingCard playerCard then
-                            "Select (2 life points)"
-
-                        else
-                            "Select (1 life point)"
+                      else
+                        button [ class transparentButton, onClick (ToggleLossDestroy index) ]
+                            [ text "Destroy" ]
                     ]
+                , if not isSelected then
+                    div [] []
+
+                  else if PlayerCard.isAgingCard playerCard then
+                    div [ class "absolute mx-auto my-auto left-0 right-0 top-0 mt-4 mr-4 text-center" ]
+                        [ renderBloodDrop
+                        , renderBloodDrop
+                        ]
+
+                  else
+                    div [ class "absolute mx-auto my-auto left-0 right-0 top-0 mt-4 mr-4 text-center" ]
+                        [ renderBloodDrop
+                        ]
                 ]
 
         healthSpent : Int
@@ -2378,8 +2394,8 @@ renderPlayerLost commonState healthLost playerCardList =
             , div [ class "flex justify-center" ]
                 (List.concat
                     [ [ span [ class "mr-4" ] [ text "Life lost:" ] ]
-                    , List.repeat (healthLost - healthSpent) (div [ class "inline-block mr-2" ] [ text "X" ])
-                    , List.repeat healthSpent (div [ class "inline-block mr-2" ] [ text "x" ])
+                    , List.repeat (healthLost - healthSpent) (div [ class "mr-2" ] [ renderBloodDrop ])
+                    , List.repeat healthSpent (div [ class "mr-2 opacity-25" ] [ renderBloodDrop ])
                     ]
                 )
             , div [ class "flex flex-wrap" ]
