@@ -2322,7 +2322,17 @@ renderPlayerLost commonState healthLost playerCardList =
         renderSelectableCard : Int -> Bool -> PlayerCard -> Html Msg
         renderSelectableCard index isSelected playerCard =
             div [ class "flex flex-col justify-center" ]
-                [ div [ class "relative mr-4 mb-4" ]
+                [ div [ class "flex justify-center" ]
+                    (if not isSelected then
+                        [ div [ class "opacity-0" ] [ span [] [ text "x" ] ] ]
+
+                     else if PlayerCard.isAgingCard playerCard then
+                        [ span [] [ text "x" ], span [] [ text "x" ] ]
+
+                     else
+                        [ span [] [ text "x" ] ]
+                    )
+                , div [ class "relative mr-4 mb-4" ]
                     [ renderPlayerCard playerCard PlayedCardNormal
                     , if isSelected then
                         div [ class "absolute top-0 left-0 w-full h-full opacity-50 bg-black" ] []
@@ -2335,25 +2345,43 @@ renderPlayerLost commonState healthLost playerCardList =
                         if isSelected then
                             "Deselect"
 
+                        else if PlayerCard.isAgingCard playerCard then
+                            "Select (2 life points)"
+
                         else
-                            "Select"
+                            "Select (1 life point)"
                     ]
                 ]
+
+        healthSpent : Int
+        healthSpent =
+            playerCardList
+                |> SelectionList.getSelected
+                |> List.map
+                    (\playerCard ->
+                        if PlayerCard.isAgingCard playerCard then
+                            2
+
+                        else
+                            1
+                    )
+                |> List.foldl (+) 0
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
-                [ div [ class "text-3xl font-bold" ] [ text "Sacrifice Cards" ]
+                [ div [ class "text-3xl font-bold" ] [ text "Defeat" ]
                 ]
             , div [ class "flex flex-col items-center" ]
-                [ div [] [ text "You have lost...but you might have unlearned some bad habits." ] ]
-            , div [ class "flex flex-col items-center" ]
-                [ div [] [ text <| String.fromInt numSelected ++ "/" ++ String.fromInt healthLost ++ " cards sacrificed" ] ]
-            , div [ class "flex flex-col items-center" ]
-                [ button [ class standardButton, onClick AcceptLoss ] [ text "Accept" ] ]
-
-            -- TODO: reverse display order just like with fighting hazard
+                [ button [ class underlineButton, onClick AcceptLoss ] [ text "Continue" ] ]
+            , div [ class "flex justify-center" ]
+                (List.concat
+                    [ [ span [ class "mr-4" ] [ text "Life lost:" ] ]
+                    , List.repeat (healthLost - healthSpent) (div [ class "inline-block mr-2" ] [ text "X" ])
+                    , List.repeat healthSpent (div [ class "inline-block mr-2" ] [ text "x" ])
+                    ]
+                )
             , div [ class "flex flex-wrap" ]
                 (SelectionList.map renderSelectableCard playerCardList)
             ]

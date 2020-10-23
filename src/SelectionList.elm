@@ -1,4 +1,4 @@
-module SelectionList exposing (SelectionList, attemptToggle, countSelected, create, getUnselected, map)
+module SelectionList exposing (SelectionList, attemptToggle, countSelected, create, getSelected, getUnselected, map)
 
 import List.Extra
 
@@ -86,6 +86,19 @@ countSelected (SelectionList _ list) =
 
 map : (Int -> Bool -> a -> b) -> SelectionList a -> List b
 map mapFn (SelectionList _ list) =
-    List.indexedMap
-        (\index ( isSelected, item ) -> mapFn index isSelected item)
-        list
+    list
+        |> List.indexedMap (\index ( isSelected, item ) -> mapFn index isSelected item)
+        |> List.reverse
+
+
+getSelected : SelectionList a -> List a
+getSelected (SelectionList _ list) =
+    list
+        |> List.filterMap
+            (\( isSelected, item ) ->
+                if isSelected then
+                    Just item
+
+                else
+                    Nothing
+            )
