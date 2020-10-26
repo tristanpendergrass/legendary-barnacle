@@ -144,9 +144,9 @@ init randomNumber =
         testPlayerDeck : PlayerDeck
         testPlayerDeck =
             -- List.append
-            -- (HazardCard.getTestCards |> List.map PlayerCard.fromHazardCard)
-            -- (robinsonCards |> List.map PlayerCard.fromRobinsonCard)
-            (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
+            (HazardCard.getTestCards |> List.map PlayerCard.fromHazardCard)
+                -- (robinsonCards |> List.map PlayerCard.fromRobinsonCard)
+                -- (AgingCard.getTestCards |> List.map PlayerCard.fromAgingCard)
                 |> PlayerDeck.create agingCards
 
         ( hazardOne, hazardTwo, remainingHazards ) =
@@ -1760,34 +1760,44 @@ type PlayedCardMod
 -- TODO: show that aging cards will cost 2 life points to sacrifice
 
 
+renderPlayerStrength : Int -> PlayedCardMod -> Html Msg
+renderPlayerStrength strength mod =
+    div [ class "flex flex-col" ]
+        [ div [ class "flex items-center justify-end space-x-1 w-16" ]
+            [ case mod of
+                PlayedCardNormal ->
+                    span [ class "text-4xl font-bold leading-none -mt-1" ] [ text <| String.fromInt strength ]
+
+                PlayedCardDoubled ->
+                    span [ class "text-4xl font-bold leading-none -mt-1 underline text-green-600" ] [ text <| String.fromInt (strength * 2) ]
+
+                PlayedCardNull ->
+                    span [ class "text-4xl font-bold leading-none -mt-1 opacity-50" ] [ text <| String.fromInt strength ]
+
+            -- , div [ class "ml-2" ] [ text "*Null" ]
+            , img [ class "block w-8 h-8", src "strength.png" ] []
+            ]
+        , case mod of
+            PlayedCardNormal ->
+                div [] []
+
+            PlayedCardDoubled ->
+                span [] [ text "*doubled*" ]
+
+            PlayedCardNull ->
+                span [] [ text "*nulled*" ]
+        ]
+
+
 renderPlayerCard : PlayerCard -> PlayedCardMod -> Html Msg
 renderPlayerCard playerCard mod =
     div [ class "flex flex-col bg-blue-300 h-32 w-64 p-2 border-8 border-blue-600 rounded border-white text-blue-800 relative" ]
-        [ div [ class "font-bold mb-2" ] [ text (PlayerCard.getTitle playerCard) ]
-        , div [ class "flex items-center mb-1" ]
-            [ div [ class "text-sm mr-2" ] [ text "Strength: " ]
-            , case mod of
-                PlayedCardNormal ->
-                    div [ class statWhite ]
-                        [ text <| String.fromInt <| PlayerCard.getStrength playerCard
-                        ]
-
-                PlayedCardDoubled ->
-                    div [ class "flex items-center" ]
-                        [ div [ class <| statWhite ++ "font-bold underline text-green-600" ]
-                            [ text <| String.fromInt <| PlayerCard.getStrength playerCard * 2
-                            ]
-                        , div [ class "ml-2" ] [ text "*Doubled" ]
-                        ]
-
-                PlayedCardNull ->
-                    div [ class "flex items-center" ]
-                        [ div [ class <| statWhite ++ " line-through" ]
-                            [ text <| String.fromInt <| PlayerCard.getStrength playerCard
-                            ]
-                        , div [ class "ml-2" ] [ text "*Null" ]
-                        ]
+        [ div [ class "flex items-start space-x-8" ]
+            [ div [ class "font-bold mb-2 flex-grow" ] [ text (PlayerCard.getTitle playerCard) ]
+            , div [] [ renderPlayerStrength (PlayerCard.getStrength playerCard) mod ]
             ]
+
+        -- , div [ class "absolute top-0 right-0" ] []
         , case PlayerCard.getAbility playerCard of
             Just ability ->
                 div [ class "flex items-center mb-1" ]
@@ -1798,7 +1808,7 @@ renderPlayerCard playerCard mod =
             Nothing ->
                 div [] []
         , if PlayerCard.isAgingCard playerCard then
-            div [ class "absolute top-0 right-0 text-xs p-2 bg-purple-600 text-gray-100 rounded mt-1 mr-1 leading-tight" ] [ text "Aging card" ]
+            div [ class "absolute bottom-0 right-0 text-xs p-2 bg-purple-600 text-gray-100 rounded mb-1 mr-1 leading-tight" ] [ text "Aging card" ]
 
           else
             div [] []
