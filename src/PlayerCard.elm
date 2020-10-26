@@ -4,6 +4,7 @@ module PlayerCard exposing
     , fromHazardCard
     , fromRobinsonCard
     , getAbility
+    , getDestroyCost
     , getStrength
     , getTitle
     , hasAbility
@@ -120,3 +121,12 @@ isAgingCard playerCard =
 
         _ ->
             False
+
+
+getDestroyCost : PlayerCard -> Int
+getDestroyCost playerCard =
+    if isAgingCard playerCard then
+        2
+
+    else
+        1

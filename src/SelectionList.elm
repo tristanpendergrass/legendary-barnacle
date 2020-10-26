@@ -1,28 +1,30 @@
-module SelectionList exposing (SelectionList, attemptToggle, countSelected, create, getSelected, getUnselected, map)
+module SelectionList exposing (SelectionItemStatus(..), SelectionList, attemptToggle, create, getSelected, getUnselected, map)
 
 import List.Extra
+import Maybe.Extra
+import PlayerCard exposing (PlayerCard)
 
 
-type SelectionList a
-    = SelectionList Int (List ( Bool, a ))
+type SelectionList
+    = SelectionList Int (List ( Bool, PlayerCard ))
 
 
-create : Int -> List a -> SelectionList a
+create : Int -> List PlayerCard -> SelectionList
 create limit xs =
     let
-        list : List ( Bool, a )
+        list : List ( Bool, PlayerCard )
         list =
             List.map (Tuple.pair False) xs
     in
     SelectionList limit list
 
 
-getLimit : SelectionList a -> Int
+getLimit : SelectionList -> Int
 getLimit (SelectionList limit _) =
     limit
 
 
-getList : SelectionList a -> List ( Bool, a )
+getList : SelectionList -> List ( Bool, PlayerCard )
 getList (SelectionList _ xs) =
     xs
 
@@ -48,50 +50,75 @@ attemptReplaceAtIndex index fn list =
             )
 
 
-toggle : ( Bool, a ) -> ( Bool, a )
+toggle : ( Bool, PlayerCard ) -> ( Bool, PlayerCard )
 toggle =
     Tuple.mapFirst not
 
 
-attemptToggle : Int -> SelectionList a -> Maybe (SelectionList a)
+attemptToggle : Int -> SelectionList -> Maybe SelectionList
 attemptToggle index (SelectionList limit list) =
     let
-        limitReached : Bool
-        limitReached =
-            numSelected list >= limit
+        totalSpent : Int
+        totalSpent =
+            list
+                |> List.filter Tuple.first
+                |> List.map (Tuple.second >> PlayerCard.getDestroyCost)
+                |> List.foldl (+) 0
+
+        replaceFn : ( Bool, PlayerCard ) -> Maybe ( Bool, PlayerCard )
+        replaceFn selectionTuple =
+            let
+                ( isSelected, playerCard ) =
+                    selectionTuple
+
+                limitReached : Bool
+                limitReached =
+                    totalSpent + PlayerCard.getDestroyCost playerCard > limit
+            in
+            if limitReached && not isSelected then
+                Nothing
+
+            else
+                Just (toggle selectionTuple)
     in
     list
-        |> attemptReplaceAtIndex index
-            (\selectionTuple ->
-                if not (Tuple.first selectionTuple) && limitReached then
-                    Nothing
-
-                else
-                    Just (toggle selectionTuple)
-            )
+        |> attemptReplaceAtIndex index replaceFn
         |> Maybe.map (SelectionList limit)
 
 
-getUnselected : SelectionList a -> List a
+getUnselected : SelectionList -> List PlayerCard
 getUnselected (SelectionList _ list) =
     list
         |> List.filter (Tuple.first >> not)
         |> List.map Tuple.second
 
 
-countSelected : SelectionList a -> Int
-countSelected (SelectionList _ list) =
-    numSelected list
+type SelectionItemStatus
+    = Selected
+    | Selectable
+    | Unselectable
 
 
-map : (Int -> Bool -> a -> b) -> SelectionList a -> List b
-map mapFn (SelectionList _ list) =
-    list
-        |> List.indexedMap (\index ( isSelected, item ) -> mapFn index isSelected item)
-        |> List.reverse
+map : (Int -> SelectionItemStatus -> PlayerCard -> b) -> SelectionList -> List b
+map mapFn selectionList =
+    case selectionList of
+        SelectionList _ list ->
+            list
+                |> List.indexedMap
+                    (\index ( isSelected, item ) ->
+                        if isSelected then
+                            mapFn index Selected item
+
+                        else if Maybe.Extra.isJust (attemptToggle index selectionList) then
+                            mapFn index Selectable item
+
+                        else
+                            mapFn index Unselectable item
+                    )
+                |> List.reverse
 
 
-getSelected : SelectionList a -> List a
+getSelected : SelectionList -> List PlayerCard
 getSelected (SelectionList _ list) =
     list
         |> List.filterMap

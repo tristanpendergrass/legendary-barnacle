@@ -61,7 +61,7 @@ type alias HealthLost =
 
 type ResolvingState
     = PlayerWon HazardCard
-    | PlayerLost HealthLost (SelectionList PlayerCard)
+    | PlayerLost HealthLost SelectionList
 
 
 type alias AndAnother =
@@ -127,7 +127,7 @@ init randomNumber =
     let
         initialSeed : Random.Seed
         initialSeed =
-            Random.initialSeed <| Debug.log "randomNumber" randomNumber
+            Random.initialSeed randomNumber
 
         ( agingCards, seedAfterAgingShuffle ) =
             Random.step AgingCard.getInitial initialSeed
@@ -584,7 +584,7 @@ updateGameInProgress msg gameState =
                                 newCommonState =
                                     { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
 
-                                playerCardList : SelectionList PlayerCard
+                                playerCardList : SelectionList
                                 playerCardList =
                                     FightArea.getCards fightArea
                                         |> SelectionList.create strengthDifference
@@ -1084,7 +1084,6 @@ updateGameInProgress msg gameState =
                     ( GameInProgress (HazardSelection { newCommonState | hazardDeck = newHazardDeck } (Two first second)), Cmd.none )
 
         ( ToggleLossDestroy index, ResolvingFight commonState (PlayerLost lifeLost selectionList) ) ->
-            -- TODO: make the attemptToggle take into account the aging cards costing 2 life
             case SelectionList.attemptToggle index selectionList of
                 Nothing ->
                     noOp
@@ -2327,15 +2326,21 @@ renderBloodDrop =
     img [ class "inline-block w-8 h-8", src "blood-drop.png" ] []
 
 
-renderPlayerLost : CommonState -> HealthLost -> SelectionList PlayerCard -> Html Msg
+renderPlayerLost : CommonState -> HealthLost -> SelectionList -> Html Msg
 renderPlayerLost commonState healthLost playerCardList =
     let
-        numSelected : Int
-        numSelected =
-            SelectionList.countSelected playerCardList
+        renderSelectableCard : Int -> SelectionList.SelectionItemStatus -> PlayerCard -> Html Msg
+        renderSelectableCard index selectionItemStatus playerCard =
+            let
+                isSelected : Bool
+                isSelected =
+                    case selectionItemStatus of
+                        SelectionList.Selected ->
+                            True
 
-        renderSelectableCard : Int -> Bool -> PlayerCard -> Html Msg
-        renderSelectableCard index isSelected playerCard =
+                        _ ->
+                            False
+            in
             div [ class "flex flex-col relative justify-center mr-4 mb-4" ]
                 [ div [ class "relative mb-2" ]
                     [ renderPlayerCard playerCard PlayedCardNormal
@@ -2346,13 +2351,18 @@ renderPlayerLost commonState healthLost playerCardList =
                         div [] []
                     ]
                 , div [ class "flex justify-center items-center h-12" ]
-                    [ if isSelected then
-                        button [ class cancelButton, onClick (ToggleLossDestroy index) ]
-                            [ text "Cancel" ]
+                    [ case selectionItemStatus of
+                        SelectionList.Selected ->
+                            button [ class cancelButton, onClick (ToggleLossDestroy index) ]
+                                [ text "Cancel" ]
 
-                      else
-                        button [ class transparentButton, onClick (ToggleLossDestroy index) ]
-                            [ text "Destroy" ]
+                        SelectionList.Selectable ->
+                            button [ class transparentButton, onClick (ToggleLossDestroy index) ]
+                                [ text "Destroy" ]
+
+                        SelectionList.Unselectable ->
+                            button [ class disabledTransparentButton ]
+                                [ text "Destroy" ]
                     ]
                 , if not isSelected then
                     div [] []
