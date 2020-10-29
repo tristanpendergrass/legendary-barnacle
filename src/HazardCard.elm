@@ -12,6 +12,7 @@ module HazardCard exposing
     , getTitle
     , getYellowValue
     , hasAbility
+    , testGetInitial
     )
 
 import FightStats exposing (FightStats, SpecialAbility(..))
@@ -147,6 +148,11 @@ hazardCards =
 getInitial : ( HazardCard, HazardCard, List HazardCard )
 getInitial =
     ( food, food, hazardCards )
+
+
+testGetInitial : ( HazardCard, HazardCard, List HazardCard )
+testGetInitial =
+    ( food, food, [ food, food ] )
 
 
 getDummy : HazardCard

@@ -37,6 +37,7 @@ type alias CommonState =
     { seed : Random.Seed
     , lifePoints : LifePoints.Counter
     , phase : Phase
+    , hazardsDefeatedThisPhase : Int
     , pirateOne : PirateCard
     , pirateTwo : PirateCard
     , pirateStatus : PirateStatus
@@ -152,6 +153,8 @@ init randomNumber =
         ( hazardOne, hazardTwo, remainingHazards ) =
             HazardCard.getInitial
 
+        -- ( hazardOne, hazardTwo, remainingHazards ) =
+        --     HazardCard.testGetInitial
         ( ( leftHazard, rightHazard, hazardCards ), seedAfterHazardShuffle ) =
             Random.step (addTwoShuffleAndDraw hazardOne hazardTwo remainingHazards) seedAfterRobinsonCards
 
@@ -171,12 +174,13 @@ init randomNumber =
             { seed = seedAfterPirateShuffle
             , lifePoints = LifePoints.createCounter 20
             , phase = PhaseGreen
+            , hazardsDefeatedThisPhase = 0
             , pirateOne = pirateOne
             , pirateTwo = pirateTwo
             , pirateStatus = BothPiratesAlive
+            , playerDeck = playerDeck
 
-            -- , playerDeck = playerDeck
-            , playerDeck = testPlayerDeck
+            -- , playerDeck = testPlayerDeck
             , hazardDeck = hazardDeck
             }
 
@@ -258,10 +262,10 @@ handlePhaseComplete commonState =
                         NormalFightView
 
                 HazardDeck.DrewOne newHazardDeck hazardCard ->
-                    HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = newSeed } (One hazardCard)
+                    HazardSelection { commonState | phase = phase, hazardsDefeatedThisPhase = 0, hazardDeck = newHazardDeck, seed = newSeed } (One hazardCard)
 
                 HazardDeck.DrewTwo newHazardDeck first second ->
-                    HazardSelection { commonState | phase = phase, hazardDeck = newHazardDeck, seed = newSeed } (Two first second)
+                    HazardSelection { commonState | phase = phase, hazardsDefeatedThisPhase = 0, hazardDeck = newHazardDeck, seed = newSeed } (Two first second)
     in
     case commonState.phase of
         PhaseRed ->
@@ -561,7 +565,7 @@ updateGameInProgress msg gameState =
 
                         newCommonState : CommonState
                         newCommonState =
-                            { commonState | playerDeck = newPlayerDeck }
+                            { commonState | playerDeck = newPlayerDeck, hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase + 1 }
 
                         resolvingState : ResolvingState
                         resolvingState =
@@ -582,7 +586,7 @@ updateGameInProgress msg gameState =
 
                                 newCommonState : CommonState
                                 newCommonState =
-                                    { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints }
+                                    { commonState | hazardDeck = newHazardDeck, lifePoints = newLifePoints, hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase + 1 }
 
                                 playerCardList : SelectionList
                                 playerCardList =
@@ -1454,33 +1458,74 @@ tooltipText =
     "opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute whitespace-no-wrap z-10 bg-gray-300 text-gray-900 text-sm py-1 px-2 rounded transition duration-300"
 
 
-renderPhase : Phase -> Html Msg
-renderPhase phase =
-    case phase of
-        PhaseGreen ->
-            ul []
-                [ li [ class "text-green-600 font-bold text-lg" ] [ text "Green  ← " ]
-                , li [ class "text-yellow-500 font-thin text-lg" ] [ text "Yellow" ]
-                , li [ class "text-red-600 text-lg" ] [ text "Red" ]
+type alias RenderPhaseProgressArg =
+    { phase : Phase
+    , hazardsDefeatedThisPhase : Int
+    , hazardsLeft : Int
+    , pirateOne : PirateCard
+    , pirateTwo : PirateCard
+    }
+
+
+renderPhaseProgress : RenderPhaseProgressArg -> Html Msg
+renderPhaseProgress { phase, hazardsDefeatedThisPhase, hazardsLeft, pirateOne, pirateTwo } =
+    let
+        beforeHazardItems : List (Html Msg)
+        beforeHazardItems =
+            case phase of
+                PhaseGreen ->
+                    [ span [] [ text "Green ->" ]
+                    ]
+
+                PhaseYellow ->
+                    [ span [] [ text "Green ->" ]
+                    , span [] [ text "Yellow ->" ]
+                    ]
+
+                PhaseRed ->
+                    [ span [] [ text "Green ->" ]
+                    , span [] [ text "Yellow ->" ]
+                    , span [] [ text "Red ->" ]
+                    ]
+
+        -- TODO: render as two hazards one on top of the other so it's clear it's the hazard choice
+        doneHazard : Html Msg
+        doneHazard =
+            div [ class "opacity-25" ]
+                [ div [ class "border-2 border-orange-300 rounded w-8 h-4 bg-orange-600" ] []
                 ]
 
-        PhaseYellow ->
-            ul []
-                [ li [ class "text-green-600 text-lg" ] [ text "Green" ]
-                , li [ class "text-yellow-500 font-bold text-lg" ] [ text "Yellow  ← " ]
-                , li [ class "text-red-600 text-lg" ] [ text "Red" ]
-                ]
+        regularHazard : Html Msg
+        regularHazard =
+            div [ class "border-2 border-orange-300 rounded-sm w-8 h-4 bg-orange-600" ] []
 
-        PhaseRed ->
-            ul []
-                [ li [ class "text-green-600 font-thin text-lg" ] [ text "Green" ]
-                , li [ class "text-yellow-500 font-thin text-lg" ] [ text "Yellow" ]
-                , li [ class "text-red-600 font-bold text-lg" ] [ text "Red  ← " ]
-                ]
+        afterHazardItems : List (Html Msg)
+        afterHazardItems =
+            case phase of
+                PhaseGreen ->
+                    [ span [] [ text "Yellow ->" ]
+                    , span [] [ text "Red ->" ]
+                    ]
+
+                PhaseYellow ->
+                    [ span [] [ text "Red ->" ]
+                    ]
+
+                PhaseRed ->
+                    []
+    in
+    div [ class "flex flex-wrap space-x-2" ]
+        (List.concat
+            [ beforeHazardItems
+            , List.repeat hazardsDefeatedThisPhase doneHazard
+            , List.repeat hazardsLeft regularHazard
+            , afterHazardItems
+            ]
+        )
 
 
-renderCommonState : CommonState -> Html Msg
-renderCommonState commonState =
+renderCommonState : CommonState -> Bool -> Html Msg
+renderCommonState commonState showExtraHazard =
     let
         renderDrawPile : Int -> Html Msg
         renderDrawPile count =
@@ -1496,19 +1541,22 @@ renderCommonState commonState =
                 , div [] [ text ("x " ++ String.fromInt count) ]
                 ]
 
-        renderHazardPile : Int -> Html Msg
-        renderHazardPile count =
-            div [ class "flex items-end space-x-2" ]
-                [ div [ class "border-4 border-orange-300 rounded w-10 h-16 bg-orange-600 mt-1 p-1 shadow" ] []
-                , div [] [ text ("x " ++ String.fromInt count) ]
-                ]
-
+        -- TODO: support viewing cards in the hazard discard
         renderHazardDiscard : Int -> Html Msg
         renderHazardDiscard count =
             div [ class "flex items-end space-x-2" ]
                 [ div [ class "border border-orange-300 border-dashed rounded w-10 h-16 mt-1" ] []
                 , div [] [ text ("x " ++ String.fromInt count) ]
                 ]
+
+        hazardsLeft : Int
+        hazardsLeft =
+            -- TODO: address possible off by one bug here
+            if showExtraHazard then
+                ceiling (toFloat (HazardDeck.drawPileCount commonState.hazardDeck) / 2) + 1
+
+            else
+                ceiling (toFloat (HazardDeck.drawPileCount commonState.hazardDeck) / 2)
     in
     div [ class leftColClasses ]
         [ div [ class "flex flex-col h-32 items-center justify-center border-b border-blue-100" ]
@@ -1529,14 +1577,18 @@ renderCommonState commonState =
             , renderDiscardPile (PlayerDeck.discardPileCount commonState.playerDeck)
             ]
         , div [ class "flex flex-col" ]
-            [ span [ class "text-sm" ] [ text "Hazard Deck" ]
-            , renderHazardPile (HazardDeck.drawPileCount commonState.hazardDeck)
-            , span [ class "text-sm mt-2" ] [ text "Hazard Discard" ]
-            , renderHazardDiscard (HazardDeck.discardPileCount commonState.hazardDeck)
+            [ span [ class "text-sm" ] [ text "Phase" ]
+            , renderPhaseProgress
+                { phase = commonState.phase
+                , hazardsLeft = hazardsLeft
+                , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
+                , pirateOne = commonState.pirateOne
+                , pirateTwo = commonState.pirateTwo
+                }
             ]
         , div [ class "flex flex-col" ]
-            [ span [ class "text-sm" ] [ text "Phase" ]
-            , renderPhase commonState.phase
+            [ span [ class "text-sm mt-2" ] [ text "Hazard Discard" ]
+            , renderHazardDiscard (HazardDeck.discardPileCount commonState.hazardDeck)
             ]
         ]
 
@@ -1632,7 +1684,7 @@ renderHazardChoice phase hazardOption =
 renderHazardSelection : CommonState -> OneOrTwo HazardCard -> Html Msg
 renderHazardSelection commonState hazardOption =
     div [ class "flex flex-row flex-grow space-x-8" ]
-        [ renderCommonState commonState
+        [ renderCommonState commonState True
         , renderHazardChoice commonState.phase hazardOption
         ]
 
@@ -2236,7 +2288,7 @@ renderFightingHazard commonState fightArea hazard fightView =
                 attemptEndFightHazard commonState.phase fightArea hazard
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
-        [ renderCommonState commonState
+        [ renderCommonState commonState True
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
@@ -2289,7 +2341,7 @@ renderFinalShowdown commonState fightArea pirate fightView =
                 attemptEndFinalShowdown fightArea pirate
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
-        [ renderCommonState commonState
+        [ renderCommonState commonState False
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
@@ -2314,7 +2366,7 @@ renderFinalShowdown commonState fightArea pirate fightView =
 renderPlayerWon : CommonState -> HazardCard -> Html Msg
 renderPlayerWon commonState reward =
     div [ class "flex flex-row flex-grow space-x-8" ]
-        [ renderCommonState commonState
+        [ renderCommonState commonState False
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Collect Reward" ]
@@ -2404,12 +2456,13 @@ renderPlayerLost commonState healthLost playerCardList =
                 |> List.foldl (+) 0
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
-        [ renderCommonState commonState
+        [ renderCommonState commonState False
         , div [ class rightColClasses ]
             [ div [ class "flex flex-col h-32 items-center justify-center" ]
                 [ div [ class "text-3xl font-bold" ] [ text "Defeat" ]
                 ]
             , div [ class "flex flex-col items-center" ]
+                -- TODO: change to a primaryButton when at least one life point has been spent (is that the right heuristic?)
                 [ button [ class underlineButton, onClick AcceptLoss ] [ text "Continue" ] ]
             , div [ class "flex justify-center" ]
                 (List.concat
