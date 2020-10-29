@@ -379,6 +379,11 @@ type EndFightOk
     | EndFightPlayerLost Int
 
 
+hazardsLeft : CommonState -> Int
+hazardsLeft { hazardDeck } =
+    ceiling (toFloat (HazardDeck.drawPileCount hazardDeck) / 2)
+
+
 getHazardStrength : FightArea.PhaseReduction -> Phase -> HazardCard -> Int
 getHazardStrength phaseReduction phase hazard =
     case getAdjustedPhase phaseReduction phase of
@@ -1461,65 +1466,83 @@ tooltipText =
 type alias RenderPhaseProgressArg =
     { phase : Phase
     , hazardsDefeatedThisPhase : Int
-    , hazardsLeft : Int
+    , displayHazardsLeft : Int
     , pirateOne : PirateCard
     , pirateTwo : PirateCard
     }
 
 
 renderPhaseProgress : RenderPhaseProgressArg -> Html Msg
-renderPhaseProgress { phase, hazardsDefeatedThisPhase, hazardsLeft, pirateOne, pirateTwo } =
+renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirateOne, pirateTwo } =
     let
+        phaseGreenTag : Html Msg
+        phaseGreenTag =
+            span [ class "px-2 py-2 text-xs leading-none bg-green-600 text-gray-100 rounded-lg inline-block" ] [ text "Phase Green" ]
+
+        phaseYellowTag : Html Msg
+        phaseYellowTag =
+            span [ class "px-2 py-2 text-xs leading-none bg-yellow-300 text-yellow-800 rounded-lg inline-block" ] [ text "Phase Yellow" ]
+
+        phaseRedTag : Html Msg
+        phaseRedTag =
+            span [ class "px-2 py-2 text-xs leading-none bg-red-600 text-gray-100 rounded-lg inline-block" ] [ text "Phase Red" ]
+
         beforeHazardItems : List (Html Msg)
         beforeHazardItems =
             case phase of
                 PhaseGreen ->
-                    [ span [] [ text "Green ->" ]
+                    [ phaseGreenTag
                     ]
 
                 PhaseYellow ->
-                    [ span [] [ text "Green ->" ]
-                    , span [] [ text "Yellow ->" ]
+                    [ phaseGreenTag
+                    , phaseYellowTag
                     ]
 
                 PhaseRed ->
-                    [ span [] [ text "Green ->" ]
-                    , span [] [ text "Yellow ->" ]
-                    , span [] [ text "Red ->" ]
+                    [ phaseGreenTag
+                    , phaseYellowTag
+                    , phaseRedTag
                     ]
 
-        -- TODO: render as two hazards one on top of the other so it's clear it's the hazard choice
+        hazard : Html Msg
+        hazard =
+            div [ class "relative -mt-1" ]
+                [ div [ class "border-2 border-orange-300 rounded-sm w-8 h-4 bg-orange-600" ] []
+                , div [ class "absolute top-0 left-0 mt-1 ml-1" ]
+                    [ div [ class "border-2 border-orange-300 rounded-sm w-8 h-4 bg-orange-600" ] []
+                    ]
+                ]
+
         doneHazard : Html Msg
         doneHazard =
             div [ class "opacity-25" ]
-                [ div [ class "border-2 border-orange-300 rounded w-8 h-4 bg-orange-600" ] []
+                [ hazard
                 ]
-
-        regularHazard : Html Msg
-        regularHazard =
-            div [ class "border-2 border-orange-300 rounded-sm w-8 h-4 bg-orange-600" ] []
 
         afterHazardItems : List (Html Msg)
         afterHazardItems =
             case phase of
                 PhaseGreen ->
-                    [ span [] [ text "Yellow ->" ]
-                    , span [] [ text "Red ->" ]
+                    [ phaseYellowTag
+                    , phaseRedTag
                     ]
 
                 PhaseYellow ->
-                    [ span [] [ text "Red ->" ]
+                    [ phaseRedTag
                     ]
 
                 PhaseRed ->
                     []
     in
-    div [ class "flex flex-wrap space-x-2" ]
+    div [ class "flex flex-wrap space-x-4 items-center" ]
         (List.concat
             [ beforeHazardItems
             , List.repeat hazardsDefeatedThisPhase doneHazard
-            , List.repeat hazardsLeft regularHazard
+            , List.repeat displayHazardsLeft hazard
             , afterHazardItems
+
+            -- TODO: render a "Victory" symbol here?
             ]
         )
 
@@ -1548,15 +1571,6 @@ renderCommonState commonState showExtraHazard =
                 [ div [ class "border border-orange-300 border-dashed rounded w-10 h-16 mt-1" ] []
                 , div [] [ text ("x " ++ String.fromInt count) ]
                 ]
-
-        hazardsLeft : Int
-        hazardsLeft =
-            -- TODO: address possible off by one bug here
-            if showExtraHazard then
-                ceiling (toFloat (HazardDeck.drawPileCount commonState.hazardDeck) / 2) + 1
-
-            else
-                ceiling (toFloat (HazardDeck.drawPileCount commonState.hazardDeck) / 2)
     in
     div [ class leftColClasses ]
         [ div [ class "flex flex-col h-32 items-center justify-center border-b border-blue-100" ]
@@ -1575,16 +1589,6 @@ renderCommonState commonState showExtraHazard =
             , renderDrawPile (PlayerDeck.drawPileCount commonState.playerDeck)
             , span [ class "text-sm mt-2" ] [ text "Robinson Discard" ]
             , renderDiscardPile (PlayerDeck.discardPileCount commonState.playerDeck)
-            ]
-        , div [ class "flex flex-col" ]
-            [ span [ class "text-sm" ] [ text "Phase" ]
-            , renderPhaseProgress
-                { phase = commonState.phase
-                , hazardsLeft = hazardsLeft
-                , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
-                , pirateOne = commonState.pirateOne
-                , pirateTwo = commonState.pirateTwo
-                }
             ]
         , div [ class "flex flex-col" ]
             [ span [ class "text-sm mt-2" ] [ text "Hazard Discard" ]
@@ -1650,7 +1654,7 @@ renderHazardChoice phase hazardOption =
                 [ text buttonLabel
                 ]
     in
-    div [ class rightColClasses ]
+    div []
         [ div [ class "flex flex-col h-32 items-center justify-center" ]
             [ div [ class "text-3xl font-bold" ] [ text "Choose Hazard" ]
             ]
@@ -1685,7 +1689,20 @@ renderHazardSelection : CommonState -> OneOrTwo HazardCard -> Html Msg
 renderHazardSelection commonState hazardOption =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState True
-        , renderHazardChoice commonState.phase hazardOption
+        , div [ class "flex flex-col w-4/5 space-y-4" ]
+            [ div [ class "flex items-center bg-gray-900 rounded shadow p-4" ]
+                [ renderPhaseProgress
+                    { phase = commonState.phase
+                    , displayHazardsLeft = hazardsLeft commonState + 1
+                    , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
+                    , pirateOne = commonState.pirateOne
+                    , pirateTwo = commonState.pirateTwo
+                    }
+                ]
+            , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+                [ renderHazardChoice commonState.phase hazardOption
+                ]
+            ]
         ]
 
 
@@ -2289,19 +2306,30 @@ renderFightingHazard commonState fightArea hazard fightView =
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState True
-        , div [ class rightColClasses ]
-            [ div [ class "flex flex-col h-32 items-center justify-center" ]
-                [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
+        , div [ class "flex flex-col w-4/5 space-y-4" ]
+            [ div [ class "flex items-center bg-gray-900 rounded shadow p-4" ]
+                [ renderPhaseProgress
+                    { phase = commonState.phase
+                    , displayHazardsLeft = hazardsLeft commonState + 1
+                    , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
+                    , pirateOne = commonState.pirateOne
+                    , pirateTwo = commonState.pirateTwo
+                    }
                 ]
-            , renderFightDash
-                { canDraw = PlayerDeck.canDraw commonState.playerDeck && isNormalFightView fightView
-                , fightArea = fightArea
-                , renderEnemy = renderHazard displayPhase hazard
-                , freeCards = HazardCard.getFreeCards hazard
-                , enemyStrength = getHazardStrength (FightArea.getPhaseReduction fightArea) commonState.phase hazard
-                , endFightResult = endFightResult
-                }
-            , renderFightArea commonState fightArea fightView
+            , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+                [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                    [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
+                    ]
+                , renderFightDash
+                    { canDraw = PlayerDeck.canDraw commonState.playerDeck && isNormalFightView fightView
+                    , fightArea = fightArea
+                    , renderEnemy = renderHazard displayPhase hazard
+                    , freeCards = HazardCard.getFreeCards hazard
+                    , enemyStrength = getHazardStrength (FightArea.getPhaseReduction fightArea) commonState.phase hazard
+                    , endFightResult = endFightResult
+                    }
+                , renderFightArea commonState fightArea fightView
+                ]
             ]
         ]
 
@@ -2342,19 +2370,30 @@ renderFinalShowdown commonState fightArea pirate fightView =
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState False
-        , div [ class rightColClasses ]
-            [ div [ class "flex flex-col h-32 items-center justify-center" ]
-                [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
+        , div [ class "flex flex-col w-4/5 space-y-4" ]
+            [ div [ class "flex items-center bg-gray-900 rounded shadow p-4" ]
+                [ renderPhaseProgress
+                    { phase = commonState.phase
+                    , displayHazardsLeft = hazardsLeft commonState
+                    , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
+                    , pirateOne = commonState.pirateOne
+                    , pirateTwo = commonState.pirateTwo
+                    }
                 ]
-            , renderFightDash
-                { canDraw = PlayerDeck.canDraw commonState.playerDeck && isNormalFightView fightView
-                , fightArea = fightArea
-                , renderEnemy = renderPirate pirate
-                , freeCards = PirateCard.getFreeCards pirate
-                , enemyStrength = PirateCard.getStrength pirate
-                , endFightResult = endFightResult
-                }
-            , renderFightArea commonState fightArea fightView
+            , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+                [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                    [ div [ class "text-3xl font-bold" ] [ text "Fight Hazard" ]
+                    ]
+                , renderFightDash
+                    { canDraw = PlayerDeck.canDraw commonState.playerDeck && isNormalFightView fightView
+                    , fightArea = fightArea
+                    , renderEnemy = renderPirate pirate
+                    , freeCards = PirateCard.getFreeCards pirate
+                    , enemyStrength = PirateCard.getStrength pirate
+                    , endFightResult = endFightResult
+                    }
+                , renderFightArea commonState fightArea fightView
+                ]
             ]
         ]
 
@@ -2367,14 +2406,25 @@ renderPlayerWon : CommonState -> HazardCard -> Html Msg
 renderPlayerWon commonState reward =
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState False
-        , div [ class rightColClasses ]
-            [ div [ class "flex flex-col h-32 items-center justify-center" ]
-                [ div [ class "text-3xl font-bold" ] [ text "Collect Reward" ]
+        , div [ class "flex flex-col w-4/5 space-y-4" ]
+            [ div [ class "flex items-center bg-gray-900 rounded shadow p-4" ]
+                [ renderPhaseProgress
+                    { phase = commonState.phase
+                    , displayHazardsLeft = hazardsLeft commonState
+                    , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
+                    , pirateOne = commonState.pirateOne
+                    , pirateTwo = commonState.pirateTwo
+                    }
                 ]
-            , div [ class "flex flex-col items-center" ]
-                [ renderPlayerCard (PlayerCard.fromHazardCard reward) PlayedCardNormal ]
-            , div [ class "flex flex-col items-center" ]
-                [ button [ class standardButton, onClick AcceptWin ] [ text "Accept" ] ]
+            , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+                [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                    [ div [ class "text-3xl font-bold" ] [ text "Collect Reward" ]
+                    ]
+                , div [ class "flex flex-col items-center" ]
+                    [ renderPlayerCard (PlayerCard.fromHazardCard reward) PlayedCardNormal ]
+                , div [ class "flex flex-col items-center" ]
+                    [ button [ class standardButton, onClick AcceptWin ] [ text "Accept" ] ]
+                ]
             ]
         ]
 
@@ -2457,22 +2507,33 @@ renderPlayerLost commonState healthLost playerCardList =
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState False
-        , div [ class rightColClasses ]
-            [ div [ class "flex flex-col h-32 items-center justify-center" ]
-                [ div [ class "text-3xl font-bold" ] [ text "Defeat" ]
+        , div [ class "flex flex-col w-4/5 space-y-4" ]
+            [ div [ class "flex items-center bg-gray-900 rounded shadow p-4" ]
+                [ renderPhaseProgress
+                    { phase = commonState.phase
+                    , displayHazardsLeft = hazardsLeft commonState
+                    , hazardsDefeatedThisPhase = commonState.hazardsDefeatedThisPhase
+                    , pirateOne = commonState.pirateOne
+                    , pirateTwo = commonState.pirateTwo
+                    }
                 ]
-            , div [ class "flex flex-col items-center" ]
-                -- TODO: change to a primaryButton when at least one life point has been spent (is that the right heuristic?)
-                [ button [ class underlineButton, onClick AcceptLoss ] [ text "Continue" ] ]
-            , div [ class "flex justify-center" ]
-                (List.concat
-                    [ [ span [ class "mr-4" ] [ text "Life lost:" ] ]
-                    , List.repeat (healthLost - healthSpent) (div [ class "mr-2" ] [ renderBloodDrop ])
-                    , List.repeat healthSpent (div [ class "mr-2 opacity-25" ] [ renderBloodDrop ])
+            , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
+                [ div [ class "flex flex-col h-32 items-center justify-center" ]
+                    [ div [ class "text-3xl font-bold" ] [ text "Defeat" ]
                     ]
-                )
-            , div [ class "flex flex-wrap" ]
-                (SelectionList.map renderSelectableCard playerCardList)
+                , div [ class "flex flex-col items-center" ]
+                    -- TODO: change to a primaryButton when at least one life point has been spent (is that the right heuristic?)
+                    [ button [ class underlineButton, onClick AcceptLoss ] [ text "Continue" ] ]
+                , div [ class "flex justify-center" ]
+                    (List.concat
+                        [ [ span [ class "mr-4" ] [ text "Life lost:" ] ]
+                        , List.repeat (healthLost - healthSpent) (div [ class "mr-2" ] [ renderBloodDrop ])
+                        , List.repeat healthSpent (div [ class "mr-2 opacity-25" ] [ renderBloodDrop ])
+                        ]
+                    )
+                , div [ class "flex flex-wrap" ]
+                    (SelectionList.map renderSelectableCard playerCardList)
+                ]
             ]
         ]
 
