@@ -1542,13 +1542,22 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
                 PhaseRed ->
                     []
 
+        renderYouAreHere : Html Msg
+        renderYouAreHere =
+            div [ class tooltip, class "w-6" ]
+                [ div [ class "flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 inline-block z-10 absolute" ]
+                    [ img [ class "w-5 h-5 rounded-full inline-block", src "robinson-pic.jpg" ] []
+                    ]
+                , div [ class "arrow-up absolute left-0 right-0 -mt-2 mx-auto text-center" ] []
+                ]
+
         renderDoneHazards : List (Html Msg)
         renderDoneHazards =
             case robinsonPlacement of
                 LastUsedHazard ->
                     List.concat
                         [ List.repeat (hazardsDefeatedThisPhase - 1) doneHazard
-                        , [ div [ class "flex flex-col justify-center" ] [ doneHazard, div [] [ text "U R Here" ] ] ]
+                        , [ div [ class "flex flex-col items-center space-y-2" ] [ doneHazard, renderYouAreHere ] ]
                         ]
 
                 _ ->
@@ -1559,7 +1568,7 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
             case robinsonPlacement of
                 FirstUnusedHazard ->
                     List.concat
-                        [ [ div [ class "flex flex-col justify-center" ] [ hazard, div [] [ text "U R Here" ] ] ]
+                        [ [ div [ class "flex flex-col items-center space-y-2" ] [ hazard, renderYouAreHere ] ]
                         , List.repeat (displayHazardsLeft - 1) hazard
                         ]
 

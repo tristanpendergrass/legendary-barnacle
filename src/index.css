@@ -18357,6 +18357,23 @@ video {
   opacity: 0.5;
 }
 
+.arrow-up {
+  --border-opacity: 1;
+  border-color: #3182ce;
+  border-color: rgba(49, 130, 206, var(--border-opacity));
+  width: 0;
+  height: 0;
+  border-left: 0.625rem solid transparent;
+  border-right: 0.625rem solid transparent;
+  border-bottom: 1.25rem solid #3182ce;
+  /* border: solid;
+  border-width: 0 3px 3px 3px;
+  display: inline-block;
+  padding: 3px;
+  transform: rotate(-135deg);
+  -webkit-transform: rotate(-135deg); */
+}
+
 @media (min-width: 640px) {
   .sm\:container {
     width: 100%;
