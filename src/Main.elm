@@ -1460,7 +1460,7 @@ tooltip =
 
 tooltipText : String
 tooltipText =
-    "opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute whitespace-no-wrap z-10 bg-gray-300 text-gray-900 text-sm py-1 px-2 rounded transition duration-300"
+    "opacity-0 invisible group-hover:opacity-100 group-hover:visible absolute whitespace-no-wrap z-50 bg-gray-300 text-gray-900 text-sm py-1 px-2 rounded transition duration-300"
 
 
 type alias RenderPhaseProgressArg =
@@ -1484,15 +1484,25 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
     let
         phaseGreenTag : Html Msg
         phaseGreenTag =
-            span [ class "px-2 py-2 text-xs leading-none bg-green-600 text-gray-100 rounded-lg inline-block" ] [ text "Phase Green" ]
+            div [ class tooltip, class "inline-block" ]
+                [ span [ class "w-6 h-6 rounded-full bg-green-600 inline-block" ] []
+                , div [ class tooltipText ] [ text "Phase Green" ]
+                ]
 
+        -- span [ class "px-2 py-2 text-xs leading-none bg-green-600 text-gray-100 rounded-lg inline-block" ] [ text "Phase Green" ]
         phaseYellowTag : Html Msg
         phaseYellowTag =
-            span [ class "px-2 py-2 text-xs leading-none bg-yellow-300 text-yellow-800 rounded-lg inline-block" ] [ text "Phase Yellow" ]
+            div [ class tooltip ]
+                [ span [ class "w-6 h-6 rounded-full bg-yellow-300 inline-block" ] []
+                , div [ class tooltipText ] [ text "Phase Yellow" ]
+                ]
 
         phaseRedTag : Html Msg
         phaseRedTag =
-            span [ class "px-2 py-2 text-xs leading-none bg-red-600 text-gray-100 rounded-lg inline-block" ] [ text "Phase Red" ]
+            div [ class tooltip ]
+                [ span [ class "w-6 h-6 rounded-full bg-red-600 inline-block" ] []
+                , div [ class tooltipText ] [ text "Phase Red" ]
+                ]
 
         beforeHazardItems : List (Html Msg)
         beforeHazardItems =
@@ -1514,7 +1524,7 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
 
         hazard : Html Msg
         hazard =
-            div [ class "relative -mt-1" ]
+            div [ class "relative" ]
                 [ div [ class "border-2 border-orange-300 rounded-sm w-8 h-4 bg-orange-600" ] []
                 , div [ class "absolute top-0 left-0 mt-1 ml-1" ]
                     [ div [ class "border-2 border-orange-300 rounded-sm w-8 h-4 bg-orange-600" ] []
@@ -1544,7 +1554,7 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
 
         renderYouAreHere : Html Msg
         renderYouAreHere =
-            div [ class tooltip, class "w-6" ]
+            div [ class tooltip, class "w-6 h-6 absolute top-0 left-0" ]
                 [ div [ class "flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 inline-block z-10 absolute" ]
                     [ img [ class "w-5 h-5 rounded-full inline-block", src "robinson-pic.jpg" ] []
                     ]
@@ -1557,7 +1567,7 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
                 LastUsedHazard ->
                     List.concat
                         [ List.repeat (hazardsDefeatedThisPhase - 1) doneHazard
-                        , [ div [ class "flex flex-col items-center space-y-2" ] [ doneHazard, renderYouAreHere ] ]
+                        , [ div [ class "flex flex-col items-center" ] [ doneHazard, renderYouAreHere ] ]
                         ]
 
                 _ ->
@@ -1568,14 +1578,14 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
             case robinsonPlacement of
                 FirstUnusedHazard ->
                     List.concat
-                        [ [ div [ class "flex flex-col items-center space-y-2" ] [ hazard, renderYouAreHere ] ]
+                        [ [ div [ class "flex flex-col items-center" ] [ hazard, renderYouAreHere ] ]
                         , List.repeat (displayHazardsLeft - 1) hazard
                         ]
 
                 _ ->
                     List.repeat displayHazardsLeft hazard
     in
-    div [ class "flex flex-wrap space-x-4 items-start" ]
+    div [ class "flex flex-wrap space-x-4 items-center" ]
         (List.concat
             [ beforeHazardItems
             , renderDoneHazards
