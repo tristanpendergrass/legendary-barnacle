@@ -1472,8 +1472,15 @@ type alias RenderPhaseProgressArg =
     }
 
 
-renderPhaseProgress : RenderPhaseProgressArg -> Html Msg
-renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirateOne, pirateTwo } =
+type RobinsonPlacement
+    = FirstUnusedHazard
+    | LastUsedHazard
+    | FirstPirate
+    | SecondPirate
+
+
+renderPhaseProgress : RenderPhaseProgressArg -> RobinsonPlacement -> Html Msg
+renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirateOne, pirateTwo } robinsonPlacement =
     let
         phaseGreenTag : Html Msg
         phaseGreenTag =
@@ -1534,14 +1541,39 @@ renderPhaseProgress { phase, hazardsDefeatedThisPhase, displayHazardsLeft, pirat
 
                 PhaseRed ->
                     []
+
+        renderDoneHazards : List (Html Msg)
+        renderDoneHazards =
+            case robinsonPlacement of
+                LastUsedHazard ->
+                    List.concat
+                        [ List.repeat (hazardsDefeatedThisPhase - 1) doneHazard
+                        , [ div [ class "flex flex-col justify-center" ] [ doneHazard, div [] [ text "U R Here" ] ] ]
+                        ]
+
+                _ ->
+                    List.repeat hazardsDefeatedThisPhase doneHazard
+
+        renderDisplayHazardsLeft : List (Html Msg)
+        renderDisplayHazardsLeft =
+            case robinsonPlacement of
+                FirstUnusedHazard ->
+                    List.concat
+                        [ [ div [ class "flex flex-col justify-center" ] [ hazard, div [] [ text "U R Here" ] ] ]
+                        , List.repeat (displayHazardsLeft - 1) hazard
+                        ]
+
+                _ ->
+                    List.repeat displayHazardsLeft hazard
     in
-    div [ class "flex flex-wrap space-x-4 items-center" ]
+    div [ class "flex flex-wrap space-x-4 items-start" ]
         (List.concat
             [ beforeHazardItems
-            , List.repeat hazardsDefeatedThisPhase doneHazard
-            , List.repeat displayHazardsLeft hazard
+            , renderDoneHazards
+            , renderDisplayHazardsLeft
             , afterHazardItems
 
+            -- TODO: render a you are here marker or style
             -- TODO: render a "Victory" symbol here?
             ]
         )
@@ -1578,6 +1610,7 @@ renderCommonState commonState showExtraHazard =
             , div [ class "text-xl font-bold" ] [ text "Robinson" ]
             ]
         , div [ class "flex flex-col" ]
+            -- TODO: render health using list of blood drop icons, some with opacity 50 for missing health
             [ span [ class "text-sm" ] [ text "Health" ]
             , span []
                 [ span [ class "text-4xl font-bold leading-8 tracking-wide" ] [ text (String.fromInt (LifePoints.getValue commonState.lifePoints)) ]
@@ -1698,6 +1731,7 @@ renderHazardSelection commonState hazardOption =
                     , pirateOne = commonState.pirateOne
                     , pirateTwo = commonState.pirateTwo
                     }
+                    FirstUnusedHazard
                 ]
             , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
                 [ renderHazardChoice commonState.phase hazardOption
@@ -2315,6 +2349,7 @@ renderFightingHazard commonState fightArea hazard fightView =
                     , pirateOne = commonState.pirateOne
                     , pirateTwo = commonState.pirateTwo
                     }
+                    FirstUnusedHazard
                 ]
             , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
                 [ div [ class "flex flex-col h-32 items-center justify-center" ]
@@ -2367,6 +2402,15 @@ renderFinalShowdown commonState fightArea pirate fightView =
 
             else
                 attemptEndFinalShowdown fightArea pirate
+
+        robinsonPlacement : RobinsonPlacement
+        robinsonPlacement =
+            case commonState.pirateStatus of
+                BothPiratesAlive ->
+                    FirstPirate
+
+                OnePirateDefeated ->
+                    SecondPirate
     in
     div [ class "flex flex-row flex-grow space-x-8" ]
         [ renderCommonState commonState False
@@ -2379,6 +2423,7 @@ renderFinalShowdown commonState fightArea pirate fightView =
                     , pirateOne = commonState.pirateOne
                     , pirateTwo = commonState.pirateTwo
                     }
+                    robinsonPlacement
                 ]
             , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
                 [ div [ class "flex flex-col h-32 items-center justify-center" ]
@@ -2415,6 +2460,7 @@ renderPlayerWon commonState reward =
                     , pirateOne = commonState.pirateOne
                     , pirateTwo = commonState.pirateTwo
                     }
+                    LastUsedHazard
                 ]
             , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
                 [ div [ class "flex flex-col h-32 items-center justify-center" ]
@@ -2516,6 +2562,7 @@ renderPlayerLost commonState healthLost playerCardList =
                     , pirateOne = commonState.pirateOne
                     , pirateTwo = commonState.pirateTwo
                     }
+                    LastUsedHazard
                 ]
             , div [ class "flex flex-col w-full flex-grow bg-gray-900 rounded shadow p-4 space-y-12" ]
                 [ div [ class "flex flex-col h-32 items-center justify-center" ]
